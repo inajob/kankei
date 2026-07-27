@@ -52,7 +52,7 @@ export async function onLoggedIn(loadDataAndRender, subscribeRealtimeFn) {
         } catch (e) { setCurrentUserRole('user'); }
         var roleBadge = document.getElementById('userRoleBadge');
         if (currentUserRole === 'admin') {
-            roleBadge.innerHTML = '<span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">ADMIN</span>';
+            roleBadge.innerHTML = '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">ADMIN</span>';
         } else {
             roleBadge.innerHTML = '';
         }

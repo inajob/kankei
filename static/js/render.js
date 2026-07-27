@@ -54,11 +54,11 @@ function renderOverview() {
     allNodes.forEach(function(node) {
         var isolated = isNodeIsolated(node.id);
         var card = document.createElement('div');
-        card.className = 'px-3 py-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl cursor-pointer transition text-sm font-medium text-slate-700 hover:text-indigo-700 truncate';
+        card.className = 'px-4 py-3 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-xl cursor-pointer transition text-base font-semibold text-slate-700 hover:text-green-700 truncate';
         card.title = node.name;
         card.textContent = node.name;
         if (isolated) {
-            card.innerHTML = escapeHtml(node.name) + ' <span class="text-[9px] bg-amber-100 text-amber-700 px-1 py-px rounded-full font-normal ml-1">孤立</span>';
+            card.innerHTML = escapeHtml(node.name) + ' <span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal ml-1">孤立</span>';
         }
         card.onclick = function() {
             setFocusedNode(node.id, true);
@@ -120,7 +120,7 @@ function renderBreadcrumbs() {
         var node = appState.nodes[nodeId];
         if (!node) return;
         var btn = document.createElement('button');
-        btn.className = 'hover:text-indigo-600 transition flex items-center gap-1 font-medium whitespace-nowrap';
+        btn.className = 'hover:text-green-600 transition flex items-center gap-1 font-medium whitespace-nowrap';
         btn.innerText = node.name;
         btn.onclick = function() {
             var histIndex = appState.history.indexOf(nodeId);
@@ -136,7 +136,7 @@ function renderBreadcrumbs() {
     });
     if (appState.focusedNodeId && appState.nodes[appState.focusedNodeId]) {
         var currentSpan = document.createElement('span');
-        currentSpan.className = 'font-bold text-slate-800 whitespace-nowrap bg-slate-200/60 px-2 py-0.5 rounded-md';
+        currentSpan.className = 'font-bold text-slate-800 whitespace-nowrap bg-green-100/60 px-2 py-0.5 rounded-md';
         currentSpan.innerText = appState.nodes[appState.focusedNodeId].name;
         navEl.appendChild(currentSpan);
     }
@@ -155,7 +155,7 @@ function renderConnectedList() {
     }
     connected.forEach(function(node) {
         var chip = document.createElement('div');
-        chip.className = 'group inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-lg text-xs font-medium cursor-pointer transition';
+        chip.className = 'group inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-green-50 text-slate-700 hover:text-green-700 rounded-lg text-sm font-medium cursor-pointer transition';
         chip.onclick = function(e) {
             if (e.target.closest('.remove-edge-btn')) return;
             setFocusedNode(node.id, true);
@@ -178,7 +178,7 @@ function renderDrawerAllNodes() {
     var drawerListEl = document.getElementById('allNodesList');
     var countBadgeEl = document.getElementById('totalConceptsBadge');
     var searchVal = document.getElementById('drawerSearchInput').value.toLowerCase().trim();
-    var isIsolatedOnly = document.getElementById('filterIsolatedBtn').classList.contains('bg-indigo-50');
+    var isIsolatedOnly = document.getElementById('filterIsolatedBtn').classList.contains('bg-green-50');
     drawerListEl.innerHTML = '';
     var allNodes = Object.values(appState.nodes);
     countBadgeEl.innerText = allNodes.length;
@@ -193,7 +193,7 @@ function renderDrawerAllNodes() {
         var isolated = isNodeIsolated(node.id);
         var isCurrent = node.id === appState.focusedNodeId;
         var li = document.createElement('li');
-        li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 last:border-b-0 ' + (isCurrent ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-700');
+        li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 last:border-b-0 ' + (isCurrent ? 'bg-green-50 text-green-700 font-bold' : 'hover:bg-slate-50 text-slate-700');
         li.onclick = function() { setFocusedNode(node.id, true); renderAll(); window._closeDrawer && window._closeDrawer(); };
         li.innerHTML = '<span class="truncate text-xs leading-tight">' + escapeHtml(node.name) + '</span>' + (isolated ? '<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal shrink-0 ml-1">孤立</span>' : '');
         drawerListEl.appendChild(li);

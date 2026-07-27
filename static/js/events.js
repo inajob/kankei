@@ -169,13 +169,13 @@ export function setupEventListeners() {
     var filterIsolatedBtn = document.getElementById('filterIsolatedBtn');
 
     filterAllBtn.onclick = function() {
-        filterAllBtn.className = 'flex-1 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded border border-indigo-200 text-center';
+        filterAllBtn.className = 'flex-1 py-1 bg-green-50 text-green-700 font-semibold rounded border border-green-200 text-center';
         filterIsolatedBtn.className = 'flex-1 py-1 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 text-center';
         renderAll();
     };
 
     filterIsolatedBtn.onclick = function() {
-        filterIsolatedBtn.className = 'flex-1 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded border border-indigo-200 text-center';
+        filterIsolatedBtn.className = 'flex-1 py-1 bg-green-50 text-green-700 font-semibold rounded border border-green-200 text-center';
         filterAllBtn.className = 'flex-1 py-1 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 text-center';
         renderAll();
     };

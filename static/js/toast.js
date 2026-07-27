@@ -5,7 +5,7 @@ export function showToast(message, type) {
     var container = document.getElementById('toastContainer');
     var toast = document.createElement('div');
     var colors = {
-        info: 'bg-indigo-600',
+        info: 'bg-green-600',
         success: 'bg-emerald-600',
         warn: 'bg-amber-500',
         error: 'bg-red-600'

@@ -46,7 +46,7 @@ export function setFocusedNode(nodeId, pushHistory) {
 export function highlightMatch(text, query) {
     var idx = text.toLowerCase().indexOf(query.toLowerCase());
     if (idx === -1) return escapeHtml(text);
-    return escapeHtml(text.substring(0, idx)) + '<span class="text-indigo-600 font-bold underline">' + escapeHtml(text.substring(idx, idx + query.length)) + '</span>' + escapeHtml(text.substring(idx + query.length));
+    return escapeHtml(text.substring(0, idx)) + '<span class="text-green-600 font-bold underline">' + escapeHtml(text.substring(idx, idx + query.length)) + '</span>' + escapeHtml(text.substring(idx + query.length));
 }
 
 export function escapeHtml(str) {
@@ -70,6 +70,6 @@ export function closeDrawer() {
 
 export function highlightAutocompleteItem(items, activeIndex) {
     items.forEach(function(item, idx) {
-        item.classList.toggle('bg-indigo-100', idx === activeIndex);
+        item.classList.toggle('bg-green-100', idx === activeIndex);
     });
 }

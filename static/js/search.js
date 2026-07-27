@@ -14,7 +14,7 @@ export function renderGlobalSearchDropdown(query) {
     }).slice(0, 6);
     matches.forEach(function(node) {
         var item = document.createElement('div');
-        item.className = 'search-autocomplete-item px-4 py-2 hover:bg-indigo-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
+        item.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
         item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-slate-400">ジャンプ</span>';
         item.onclick = function() {
             setFocusedNode(node.id, true);
@@ -27,7 +27,7 @@ export function renderGlobalSearchDropdown(query) {
     });
     if (currentUser) {
         var createOption = document.createElement('div');
-        createOption.className = 'search-autocomplete-item px-4 py-2 hover:bg-indigo-50 cursor-pointer text-xs font-semibold text-indigo-600 bg-slate-50 flex items-center gap-1.5';
+        createOption.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs font-semibold text-green-600 bg-slate-50 flex items-center gap-1.5';
         createOption.innerHTML = '<i class="fa-solid fa-plus text-[10px]"></i> 「' + query.replace(/</g, '&lt;') + '」を新規作成してジャンプ';
         createOption.onclick = function() {
             getOrCreateNode(query).then(function(node) {
@@ -55,8 +55,8 @@ export function renderConnectSearchDropdown(query) {
     }).slice(0, 5);
     matches.forEach(function(node) {
         var item = document.createElement('div');
-        item.className = 'connect-autocomplete-item px-4 py-2 hover:bg-indigo-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
-        item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-indigo-500 font-semibold">+ 接続</span>';
+        item.className = 'connect-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
+        item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-green-500 font-semibold">+ 接続</span>';
         item.onclick = async function() {
             await createEdgeInternal(appState.focusedNodeId, node.id);
             window._renderAll && window._renderAll();
