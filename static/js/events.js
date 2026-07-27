@@ -102,8 +102,9 @@ export function setupEventListeners() {
     connectBtn.onclick = function() { submitConnectInput(); };
 
     document.getElementById('homeBtn').onclick = function() {
-        var first = Object.keys(appState.nodes)[0];
-        if (first) { setFocusedNode(first, true); renderAll(); }
+        appState.focusedNodeId = null;
+        history.pushState(null, '', window.location.pathname);
+        renderAll();
     };
 
     document.getElementById('deleteFocusedConceptBtn').onclick = function() {

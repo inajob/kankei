@@ -33,12 +33,6 @@ async function loadDataAndRender() {
             setFocusedNode(node.id, false);
         }
     }
-    if (!appState.focusedNodeId) {
-        var firstId = Object.keys(appState.nodes)[0];
-        if (firstId) {
-            setFocusedNode(firstId, false);
-        }
-    }
     setupEventListeners();
     renderAll();
 }
@@ -48,9 +42,12 @@ window.addEventListener('hashchange', function() {
     if (hashName) {
         var node = findNodeByName(hashName);
         if (node && appState.focusedNodeId !== node.id) {
-            setFocusedNode(node.id, true);
+            setFocusedNode(node.id, false);
             renderAll();
         }
+    } else {
+        appState.focusedNodeId = null;
+        renderAll();
     }
 });
 

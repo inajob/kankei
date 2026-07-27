@@ -27,9 +27,11 @@ export function setDraggedNode(n) { draggedNode = n; }
 export function setAppState(s) { appState = s; }
 
 export function resetAppState() {
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
     appState = { nodes: {}, edges: [], focusedNodeId: null, history: [], viewMode: 'list' };
     currentUser = null;
     currentUserRole = 'user';
     activeGlobalSearchIndex = -1;
     activeConnectSearchIndex = -1;
+    animationFrameId = null;
 }

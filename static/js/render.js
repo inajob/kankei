@@ -1,27 +1,87 @@
-import { appState, currentUser, currentUserRole } from './state.js';
+import { appState, currentUser, currentUserRole, animationFrameId } from './state.js';
+import { setAnimationFrameId } from './state.js';
 import { isNodeIsolated, escapeHtml, setFocusedNode } from './utils.js';
 import { getUserName } from './auth.js';
 
 export function renderAll() {
-    renderFocusedConcept();
-    renderBreadcrumbs();
-    renderConnectedList();
+    var overviewSection = document.getElementById('overviewSection');
+    var focusSection = document.getElementById('focusSection');
+    var breadcrumbNav = document.getElementById('breadcrumbNav');
+    var showOverview = !appState.focusedNodeId || !appState.nodes[appState.focusedNodeId];
+
+    if (showOverview && animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        setAnimationFrameId(null);
+    }
+
+    if (overviewSection) overviewSection.classList.toggle('hidden', !showOverview);
+    if (focusSection) focusSection.classList.toggle('hidden', showOverview);
+    if (breadcrumbNav) breadcrumbNav.classList.toggle('hidden', showOverview);
+
+    if (showOverview) {
+        renderOverview();
+    } else {
+        renderFocusedConcept();
+        renderBreadcrumbs();
+        renderConnectedList();
+        var listViewContainer = document.getElementById('listViewContainer');
+        var graphViewContainer = document.getElementById('graphViewContainer');
+        if (appState.viewMode === 'graph') {
+            if (listViewContainer) listViewContainer.classList.add('hidden');
+            if (graphViewContainer) graphViewContainer.classList.remove('hidden');
+            window._initGraphCanvas && window._initGraphCanvas();
+        } else {
+            if (listViewContainer) listViewContainer.classList.remove('hidden');
+            if (graphViewContainer) graphViewContainer.classList.add('hidden');
+        }
+    }
     renderDrawerAllNodes();
     renderGuestMode();
-    if (appState.viewMode === 'graph') {
-        window._initGraphCanvas && window._initGraphCanvas();
+}
+
+function renderOverview() {
+    var allNodes = Object.values(appState.nodes);
+
+    var listEl = document.getElementById('overviewNodeList');
+    listEl.innerHTML = '';
+    allNodes.sort(function(a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
+
+    if (allNodes.length === 0) {
+        listEl.innerHTML = '<div class="col-span-full text-center text-slate-400 text-xs py-8"><i class="fa-solid fa-circle-nodes text-slate-300 text-3xl mb-2 block"></i>まだ概念がありません</div>';
+        return;
     }
+
+    allNodes.forEach(function(node) {
+        var isolated = isNodeIsolated(node.id);
+        var card = document.createElement('div');
+        card.className = 'px-3 py-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl cursor-pointer transition text-sm font-medium text-slate-700 hover:text-indigo-700 truncate';
+        card.title = node.name;
+        card.textContent = node.name;
+        if (isolated) {
+            card.innerHTML = escapeHtml(node.name) + ' <span class="text-[9px] bg-amber-100 text-amber-700 px-1 py-px rounded-full font-normal ml-1">孤立</span>';
+        }
+        card.onclick = function() {
+            setFocusedNode(node.id, true);
+            renderAll();
+        };
+        listEl.appendChild(card);
+    });
 }
 
 function renderGuestMode() {
     var isGuest = !currentUser;
+    var isAdmin = currentUserRole === 'admin';
     var connectSection = document.getElementById('connectSection');
     var deleteBtn = document.getElementById('deleteFocusedConceptBtn');
     var toggleDataModalBtn = document.getElementById('toggleDataModalBtn');
     var globalSearchInput = document.getElementById('globalSearchInput');
+    var resetDataBtn = document.getElementById('resetDataBtn');
+    var importSection = document.getElementById('importJsonInput') && document.getElementById('importJsonInput').closest('.relative');
     if (connectSection) connectSection.classList.toggle('hidden', isGuest);
     if (deleteBtn && isGuest) deleteBtn.classList.add('hidden');
     if (toggleDataModalBtn) toggleDataModalBtn.classList.toggle('hidden', isGuest);
+    if (resetDataBtn) resetDataBtn.classList.toggle('hidden', !isAdmin);
+    if (importSection) importSection.classList.toggle('hidden', !isAdmin);
     if (globalSearchInput) {
         globalSearchInput.placeholder = isGuest ? '概念を検索...' : '概念を検索 または 新規作成...';
     }
@@ -33,10 +93,6 @@ function renderFocusedConcept() {
     var creatorEl = document.getElementById('focusedConceptCreator');
     var deleteBtn = document.getElementById('deleteFocusedConceptBtn');
     if (!appState.focusedNodeId || !appState.nodes[appState.focusedNodeId]) {
-        titleEl.innerText = '概念がありません';
-        isolatedBadge.classList.add('hidden');
-        creatorEl.textContent = '';
-        deleteBtn.classList.add('hidden');
         return;
     }
     var currentNode = appState.nodes[appState.focusedNodeId];
