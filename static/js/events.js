@@ -287,7 +287,8 @@ export function setupEventListeners() {
     setupUsernameHandlers();
 
     document.getElementById('loginBtn').onclick = async function() {
-        var res = await sb.auth.signInWithOAuth({ provider: 'google' });
+        var base = new URL('.', window.location.href).pathname;
+        var res = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + base } });
         if (res.error) showToast('ログインに失敗しました', 'error');
     };
 
