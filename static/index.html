@@ -3,33 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>概念思考メモ - Concept Network Explorer</title>
+    <title>kankei - 関係するものをつなげていく</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-100 selection:text-indigo-700">
 
+    <!-- Login Screen -->
+    <div id="loginScreen" class="fixed inset-0 bg-white z-[100] flex items-center justify-center">
+        <div class="text-center flex flex-col items-center gap-6">
+            <i class="fa-solid font-black fa-circle-nodes text-indigo-600 text-6xl"></i>
+            <div>
+                <h1 class="text-2xl font-extrabold text-slate-900">kankei</h1>
+                <p class="text-sm text-slate-500 mt-1">関係するものをつなげていく</p>
+            </div>
+            <button id="loginBtn" class="px-6 py-3 bg-white border-2 border-slate-200 hover:border-indigo-400 rounded-xl font-medium text-sm text-slate-700 transition flex items-center gap-3 shadow-sm hover:shadow">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12.255 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96h-3.98v3.09C3.515 21.3 7.565 24 12.255 24z"/><path fill="#FBBC05" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"/><path fill="#EA4335" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0c-4.69 0-8.74 2.7-10.71 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+                Googleでログイン
+            </button>
+            <button id="guestBtn" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium text-sm text-slate-600 transition">
+                <i class="fa-solid fa-eye mr-1.5"></i>ゲストとして閲覧
+            </button>
+            <p class="text-[11px] text-slate-400">ゲストは閲覧のみ可能です</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-[90] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
             <button id="homeBtn" class="flex items-center gap-2 text-indigo-600 font-bold text-lg hover:text-indigo-700 transition">
                 <i class="fa-solid font-black fa-circle-nodes text-xl"></i>
-                <span class="hidden sm:inline">ConceptNet</span>
+                <span class="hidden sm:inline">kankei</span>
             </button>
             <div class="relative flex-1 max-w-md">
                 <div class="relative">
@@ -53,13 +62,33 @@
                 <button id="toggleDataModalBtn" class="p-2 text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition" title="データ管理">
                     <i class="fa-solid fa-gear"></i>
                 </button>
+                <button id="headerLoginBtn" class="hidden px-3 py-2 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition">
+                    <i class="fa-solid fa-right-to-bracket mr-1"></i>ログイン
+                </button>
+                <div id="userMenu" class="hidden relative">
+                    <button id="userAvatarBtn" class="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-200 hover:border-indigo-400 transition">
+                        <img id="userAvatar" src="" alt="" class="w-full h-full object-cover">
+                    </button>
+                    <div id="userDropdown" class="hidden absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl py-2 min-w-[180px] z-50">
+                        <div id="userName" class="px-3 py-1 text-xs font-semibold text-slate-800 truncate"></div>
+                        <div id="userEmail" class="px-3 pb-1 text-[11px] text-slate-400 truncate"></div>
+                        <div id="userRoleBadge" class="px-3 pb-2"></div>
+                        <hr class="border-slate-100">
+                        <button id="editUsernameBtn" class="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition">
+                            <i class="fa-solid fa-pen mr-1.5"></i>ユーザー名を設定
+                        </button>
+                        <button id="logoutBtn" class="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition">
+                            <i class="fa-solid fa-right-from-bracket mr-1.5"></i>ログアウト
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
+    <!-- Main Content -->
     <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col gap-6">
-        <nav id="breadcrumbNav" class="flex items-center gap-2 text-xs text-slate-500 overflow-x-auto py-1 no-scrollbar">
-        </nav>
+        <nav id="breadcrumbNav" class="flex items-center gap-2 text-xs text-slate-500 overflow-x-auto py-1 no-scrollbar"></nav>
 
         <section id="focusSection" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-6 transition-all duration-200">
             <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
@@ -68,9 +97,8 @@
                         <span>中心概念</span>
                         <span id="isolatedBadge" class="hidden ml-2 px-2 py-0.5 text-[10px] bg-amber-100 text-amber-700 font-normal rounded-full">孤立中</span>
                     </div>
-                    <h1 id="focusedConceptTitle" class="text-2xl sm:text-3xl font-extrabold text-slate-900 break-words leading-tight">
-                        --
-                    </h1>
+                    <h1 id="focusedConceptTitle" class="text-2xl sm:text-3xl font-extrabold text-slate-900 break-words leading-tight">--</h1>
+                    <div id="focusedConceptCreator" class="text-[11px] text-slate-400 mt-1"></div>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="bg-slate-100 p-1 rounded-xl flex items-center text-xs">
@@ -87,7 +115,7 @@
                 </div>
             </div>
 
-            <div class="relative">
+            <div id="connectSection" class="relative">
                 <label for="connectInput" class="block text-xs font-semibold text-slate-600 mb-1.5">
                     <i class="fa-solid fa-link text-indigo-500 mr-1"></i> 概念を繋げる（Enterで連続登録）
                 </label>
@@ -97,8 +125,7 @@
                             placeholder="例: 赤, 果物, 青森 (新しい単語または既存単語)..." 
                             class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition"
                             autocomplete="off">
-                        <div id="connectDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto z-40 divide-y divide-slate-100">
-                        </div>
+                        <div id="connectDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto z-40 divide-y divide-slate-100"></div>
                     </div>
                     <button id="connectBtn" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm rounded-xl transition shadow-sm flex items-center gap-1.5 shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i> 接続
@@ -112,8 +139,7 @@
                         直接繋がっている概念 (<span id="connectedCount">0</span>)
                     </h2>
                 </div>
-                <div id="connectedList" class="flex flex-wrap gap-1.5 min-h-[60px]">
-                </div>
+                <div id="connectedList" class="flex flex-wrap gap-1.5 min-h-[60px]"></div>
             </div>
 
             <div id="graphViewContainer" class="hidden flex-col gap-2">
@@ -128,6 +154,7 @@
         </section>
     </main>
 
+    <!-- Drawer: All Concepts -->
     <div id="allNodesDrawer" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden transition-opacity">
         <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col transform transition-transform">
             <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -147,11 +174,11 @@
                     <button id="filterIsolatedBtn" class="flex-1 py-1 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 text-center">孤立のみ</button>
                 </div>
             </div>
-            <ul id="allNodesList" class="flex-1 overflow-y-auto py-1 divide-y divide-slate-100">
-            </ul>
+            <ul id="allNodesList" class="flex-1 overflow-y-auto py-1 divide-y divide-slate-100"></ul>
         </div>
     </div>
 
+    <!-- Modal: Data Management -->
     <div id="dataModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-5 border border-slate-100">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -163,7 +190,7 @@
                 </button>
             </div>
             <p class="text-xs text-slate-500 leading-relaxed">
-                作成したすべての概念と接続データはサーバーに保持されています。バックアップの保存や共有用にJSON形式で取得できます。
+                作成したすべての概念と接続データはSupabaseに保持されています。バックアップの保存や共有用にJSON形式で取得できます。
             </p>
             <div class="flex flex-col gap-3">
                 <button id="exportJsonBtn" class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition flex items-center justify-center gap-2">
@@ -175,742 +202,38 @@
                 </div>
             </div>
             <div class="border-t border-slate-100 pt-3 flex justify-between items-center">
-                <button id="resetDataBtn" class="text-xs text-red-500 hover:text-red-700 hover:underline">
-                    全データを初期化（消去）
-                </button>
-                <button id="dataModalDoneBtn" class="px-4 py-2 bg-indigo-600 text-white font-medium text-xs rounded-xl hover:bg-indigo-700">
-                    完了
-                </button>
+                <button id="resetDataBtn" class="text-xs text-red-500 hover:text-red-700 hover:underline">全データを初期化（消去）</button>
+                <button id="dataModalDoneBtn" class="px-4 py-2 bg-indigo-600 text-white font-medium text-xs rounded-xl hover:bg-indigo-700">完了</button>
             </div>
         </div>
     </div>
 
-    <script>
-        (function() {
-            let appState = {
-                nodes: {},
-                edges: [],
-                focusedNodeId: null,
-                history: [],
-                viewMode: 'list'
-            };
+    <!-- Modal: Username Setting -->
+    <div id="usernameModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4 border border-slate-100">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-indigo-600"></i> ユーザー名の設定
+                </h3>
+                <button id="closeUsernameModalBtn" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500">全ユーザーに公開される一意の識別名です。一度設定すると変更できます。</p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">ユーザー名</label>
+                <input type="text" id="usernameInput" placeholder="例: taro_yamada" maxlength="30"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition">
+                <p id="usernameHint" class="text-[11px] text-slate-400 mt-1">英数字、アンダースコア、ハイフンが使えます（3〜30文字）</p>
+                <p id="usernameError" class="text-[11px] text-red-500 mt-1 hidden"></p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button id="cancelUsernameBtn" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl transition">キャンセル</button>
+                <button id="saveUsernameBtn" class="px-4 py-2 bg-indigo-600 text-white font-medium text-xs rounded-xl hover:bg-indigo-700 transition">保存</button>
+            </div>
+        </div>
+    </div>
 
-            let activeGlobalSearchIndex = -1;
-            let activeConnectSearchIndex = -1;
-            let animationFrameId = null;
-            let graphNodes = [];
-            let draggedNode = null;
-
-            async function api(method, path, body) {
-                const opts = { method, headers: {} };
-                if (body) {
-                    opts.headers['Content-Type'] = 'application/json';
-                    opts.body = JSON.stringify(body);
-                }
-                const res = await fetch('/api' + path, opts);
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({ error: res.statusText }));
-                    throw new Error(err.error || res.statusText);
-                }
-                return res.json();
-            }
-
-            async function loadAllData() {
-                const [nodes, edges] = await Promise.all([
-                    api('GET', '/nodes'),
-                    api('GET', '/export')
-                ]);
-                appState.nodes = nodes || {};
-                appState.edges = (edges && edges.edges) || [];
-            }
-
-            function init() {
-                loadAllData().then(() => {
-                    const firstId = Object.keys(appState.nodes)[0];
-                    if (firstId) {
-                        setFocusedNode(firstId, false);
-                    }
-                    setupEventListeners();
-                    renderAll();
-                });
-            }
-
-            function generateId() {
-                return 'id_' + Math.random().toString(36).substr(2, 9);
-            }
-
-            function normalizeName(name) {
-                return name.trim();
-            }
-
-            function findNodeByName(name) {
-                const normalized = normalizeName(name).toLowerCase();
-                return Object.values(appState.nodes).find(n => n.name.toLowerCase() === normalized);
-            }
-
-            async function getOrCreateNode(name) {
-                const cleanName = normalizeName(name);
-                if (!cleanName) return null;
-                const existing = findNodeByName(cleanName);
-                if (existing) return existing;
-                const node = await api('POST', '/nodes', { name: cleanName });
-                if (node) {
-                    appState.nodes[node.id] = node;
-                }
-                return node;
-            }
-
-            async function createEdgeInternal(nodeId1, nodeId2) {
-                if (!nodeId1 || !nodeId2 || nodeId1 === nodeId2) return null;
-                const exists = appState.edges.some(e =>
-                    (e.node1 === nodeId1 && e.node2 === nodeId2) ||
-                    (e.node1 === nodeId2 && e.node2 === nodeId1)
-                );
-                if (exists) return null;
-                const result = await api('POST', '/edges', { node1: nodeId1, node2: nodeId2 });
-                if (result && result.id) {
-                    appState.edges.push(result);
-                    return result;
-                }
-                return null;
-            }
-
-            async function removeEdge(nodeId1, nodeId2) {
-                await api('POST', '/edges/remove', { node1: nodeId1, node2: nodeId2 });
-                appState.edges = appState.edges.filter(e =>
-                    !((e.node1 === nodeId1 && e.node2 === nodeId2) || (e.node1 === nodeId2 && e.node2 === nodeId1))
-                );
-                renderAll();
-            }
-
-            async function deleteNode(nodeId) {
-                if (!appState.nodes[nodeId]) return;
-                await api('DELETE', '/nodes/' + nodeId);
-                delete appState.nodes[nodeId];
-                appState.edges = appState.edges.filter(e => e.node1 !== nodeId && e.node2 !== nodeId);
-                appState.history = appState.history.filter(id => id !== nodeId);
-
-                if (appState.focusedNodeId === nodeId) {
-                    const remainingIds = Object.keys(appState.nodes);
-                    if (remainingIds.length > 0) {
-                        setFocusedNode(remainingIds[remainingIds.length - 1], false);
-                    } else {
-                        appState.focusedNodeId = null;
-                    }
-                }
-                renderAll();
-            }
-
-            function getConnectedNodes(nodeId) {
-                if (!nodeId) return [];
-                const connectedIds = new Set();
-                appState.edges.forEach(e => {
-                    if (e.node1 === nodeId) connectedIds.add(e.node2);
-                    if (e.node2 === nodeId) connectedIds.add(e.node1);
-                });
-                return Array.from(connectedIds)
-                    .map(id => appState.nodes[id])
-                    .filter(Boolean)
-                    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-            }
-
-            function isNodeIsolated(nodeId) {
-                return !appState.edges.some(e => e.node1 === nodeId || e.node2 === nodeId);
-            }
-
-            function setFocusedNode(nodeId, pushHistory) {
-                if (!appState.nodes[nodeId]) return;
-                if (pushHistory && appState.focusedNodeId && appState.focusedNodeId !== nodeId) {
-                    if (appState.history[appState.history.length - 1] !== appState.focusedNodeId) {
-                        appState.history.push(appState.focusedNodeId);
-                    }
-                }
-                appState.focusedNodeId = nodeId;
-                renderAll();
-            }
-
-            function renderAll() {
-                renderFocusedConcept();
-                renderBreadcrumbs();
-                renderConnectedList();
-                renderDrawerAllNodes();
-                if (appState.viewMode === 'graph') {
-                    initGraphCanvas();
-                }
-            }
-
-            function renderFocusedConcept() {
-                const titleEl = document.getElementById('focusedConceptTitle');
-                const isolatedBadge = document.getElementById('isolatedBadge');
-                if (!appState.focusedNodeId || !appState.nodes[appState.focusedNodeId]) {
-                    titleEl.innerText = '概念がありません';
-                    isolatedBadge.classList.add('hidden');
-                    return;
-                }
-                const currentNode = appState.nodes[appState.focusedNodeId];
-                titleEl.innerText = currentNode.name;
-                if (isNodeIsolated(currentNode.id)) {
-                    isolatedBadge.classList.remove('hidden');
-                } else {
-                    isolatedBadge.classList.add('hidden');
-                }
-            }
-
-            function renderBreadcrumbs() {
-                const navEl = document.getElementById('breadcrumbNav');
-                navEl.innerHTML = '';
-                if (appState.history.length === 0) {
-                    navEl.innerHTML = '<span class="text-slate-400 italic"><i class="fa-solid fa-compass mr-1"></i> 思考の軌跡がここに表示されます</span>';
-                    return;
-                }
-                const recentHistory = appState.history.slice(-5);
-                recentHistory.forEach((nodeId) => {
-                    const node = appState.nodes[nodeId];
-                    if (!node) return;
-                    const btn = document.createElement('button');
-                    btn.className = 'hover:text-indigo-600 transition flex items-center gap-1 font-medium whitespace-nowrap';
-                    btn.innerText = node.name;
-                    btn.onclick = () => {
-                        const histIndex = appState.history.indexOf(nodeId);
-                        if (histIndex !== -1) {
-                            appState.history = appState.history.slice(0, histIndex);
-                        }
-                        setFocusedNode(nodeId, false);
-                    };
-                    navEl.appendChild(btn);
-                    const arrow = document.createElement('span');
-                    arrow.className = 'text-slate-300';
-                    arrow.innerHTML = '<i class="fa-solid fa-chevron-right text-[10px]"></i>';
-                    navEl.appendChild(arrow);
-                });
-                if (appState.focusedNodeId && appState.nodes[appState.focusedNodeId]) {
-                    const currentSpan = document.createElement('span');
-                    currentSpan.className = 'font-bold text-slate-800 whitespace-nowrap bg-slate-200/60 px-2 py-0.5 rounded-md';
-                    currentSpan.innerText = appState.nodes[appState.focusedNodeId].name;
-                    navEl.appendChild(currentSpan);
-                }
-            }
-
-            function renderConnectedList() {
-                const listEl = document.getElementById('connectedList');
-                const countEl = document.getElementById('connectedCount');
-                listEl.innerHTML = '';
-                if (!appState.focusedNodeId) return;
-                const connected = getConnectedNodes(appState.focusedNodeId);
-                countEl.innerText = connected.length;
-                if (connected.length === 0) {
-                    listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-link-slash text-slate-300 text-xl mb-1 block"></i>繋がっている概念はありません</div>';
-                    return;
-                }
-                connected.forEach(node => {
-                    const chip = document.createElement('div');
-                    chip.className = 'group inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-lg text-xs font-medium cursor-pointer transition';
-                    chip.onclick = (e) => {
-                        if (e.target.closest('.remove-edge-btn')) return;
-                        setFocusedNode(node.id, true);
-                    };
-                    chip.innerHTML = '<span class="truncate max-w-[120px]">' + escapeHtml(node.name) + '</span><button class="remove-edge-btn text-slate-300 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除"><i class="fa-solid fa-xmark"></i></button>';
-                    const removeBtn = chip.querySelector('.remove-edge-btn');
-                    removeBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        removeEdge(appState.focusedNodeId, node.id);
-                    };
-                    listEl.appendChild(chip);
-                });
-            }
-
-            function renderDrawerAllNodes() {
-                const drawerListEl = document.getElementById('allNodesList');
-                const countBadgeEl = document.getElementById('totalConceptsBadge');
-                const searchVal = document.getElementById('drawerSearchInput').value.toLowerCase().trim();
-                const isIsolatedOnly = document.getElementById('filterIsolatedBtn').classList.contains('bg-indigo-50');
-                drawerListEl.innerHTML = '';
-                let allNodes = Object.values(appState.nodes);
-                countBadgeEl.innerText = allNodes.length;
-                if (isIsolatedOnly) {
-                    allNodes = allNodes.filter(n => isNodeIsolated(n.id));
-                }
-                if (searchVal) {
-                    allNodes = allNodes.filter(n => n.name.toLowerCase().includes(searchVal));
-                }
-                allNodes.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-                if (allNodes.length === 0) {
-                    drawerListEl.innerHTML = '<li class="py-3 text-center text-[11px] text-slate-400">該当する概念はありません</li>';
-                    return;
-                }
-                allNodes.forEach(node => {
-                    const isolated = isNodeIsolated(node.id);
-                    const isCurrent = node.id === appState.focusedNodeId;
-                    const li = document.createElement('li');
-                    li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 last:border-b-0 ' + (isCurrent ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-700');
-                    li.onclick = () => {
-                        setFocusedNode(node.id, true);
-                        closeDrawer();
-                    };
-                    li.innerHTML = '<span class="truncate text-xs leading-tight">' + escapeHtml(node.name) + '</span>' + (isolated ? '<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal shrink-0 ml-1">孤立</span>' : '');
-                    drawerListEl.appendChild(li);
-                });
-            }
-
-            function setupEventListeners() {
-                const globalInput = document.getElementById('globalSearchInput');
-                const clearGlobalBtn = document.getElementById('clearGlobalSearch');
-
-                globalInput.addEventListener('input', () => {
-                    const val = globalInput.value.trim();
-                    clearGlobalBtn.classList.toggle('hidden', val.length === 0);
-                    renderGlobalSearchDropdown(val);
-                });
-
-                globalInput.addEventListener('keydown', (e) => {
-                    const dropdown = document.getElementById('globalSearchDropdown');
-                    const items = dropdown.querySelectorAll('.search-autocomplete-item');
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        activeGlobalSearchIndex = Math.min(activeGlobalSearchIndex + 1, items.length - 1);
-                        highlightAutocompleteItem(items, activeGlobalSearchIndex);
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        activeGlobalSearchIndex = Math.max(activeGlobalSearchIndex - 1, -1);
-                        highlightAutocompleteItem(items, activeGlobalSearchIndex);
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (activeGlobalSearchIndex >= 0 && items[activeGlobalSearchIndex]) {
-                            items[activeGlobalSearchIndex].click();
-                        } else {
-                            const val = globalInput.value.trim();
-                            if (val) {
-                                getOrCreateNode(val).then(node => {
-                                    if (node) {
-                                        setFocusedNode(node.id, true);
-                                        globalInput.value = '';
-                                        clearGlobalBtn.classList.add('hidden');
-                                        hideDropdown('globalSearchDropdown');
-                                    }
-                                });
-                            }
-                        }
-                    } else if (e.key === 'Escape') {
-                        hideDropdown('globalSearchDropdown');
-                    }
-                });
-
-                clearGlobalBtn.onclick = () => {
-                    globalInput.value = '';
-                    clearGlobalBtn.classList.add('hidden');
-                    hideDropdown('globalSearchDropdown');
-                    globalInput.focus();
-                };
-
-                const connectInput = document.getElementById('connectInput');
-                const connectBtn = document.getElementById('connectBtn');
-
-                connectInput.addEventListener('input', () => {
-                    renderConnectSearchDropdown(connectInput.value.trim());
-                });
-
-                connectInput.addEventListener('keydown', (e) => {
-                    const dropdown = document.getElementById('connectDropdown');
-                    const items = dropdown.querySelectorAll('.connect-autocomplete-item');
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        activeConnectSearchIndex = Math.min(activeConnectSearchIndex + 1, items.length - 1);
-                        highlightAutocompleteItem(items, activeConnectSearchIndex);
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        activeConnectSearchIndex = Math.max(activeConnectSearchIndex - 1, -1);
-                        highlightAutocompleteItem(items, activeConnectSearchIndex);
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (activeConnectSearchIndex >= 0 && items[activeConnectSearchIndex]) {
-                            items[activeConnectSearchIndex].click();
-                        } else {
-                            submitConnectInput();
-                        }
-                    } else if (e.key === 'Escape') {
-                        hideDropdown('connectDropdown');
-                    }
-                });
-
-                connectBtn.onclick = () => submitConnectInput();
-
-                document.getElementById('homeBtn').onclick = () => {
-                    const first = Object.keys(appState.nodes)[0];
-                    if (first) setFocusedNode(first, true);
-                };
-
-                document.getElementById('deleteFocusedConceptBtn').onclick = () => {
-                    if (!appState.focusedNodeId) return;
-                    const node = appState.nodes[appState.focusedNodeId];
-                    if (confirm('概念「' + node.name + '」を削除してもよろしいですか？\n（この概念に紐づく接続も全て解除されます）')) {
-                        deleteNode(node.id);
-                    }
-                };
-
-                const viewListBtn = document.getElementById('viewListBtn');
-                const viewGraphBtn = document.getElementById('viewGraphBtn');
-                const listViewContainer = document.getElementById('listViewContainer');
-                const graphViewContainer = document.getElementById('graphViewContainer');
-
-                viewListBtn.onclick = () => {
-                    appState.viewMode = 'list';
-                    viewListBtn.className = 'px-2.5 py-1.5 rounded-lg font-medium transition bg-white text-slate-800 shadow-sm';
-                    viewGraphBtn.className = 'px-2.5 py-1.5 rounded-lg font-medium transition text-slate-500 hover:text-slate-800';
-                    listViewContainer.classList.remove('hidden');
-                    graphViewContainer.classList.add('hidden');
-                };
-
-                viewGraphBtn.onclick = () => {
-                    appState.viewMode = 'graph';
-                    viewGraphBtn.className = 'px-2.5 py-1.5 rounded-lg font-medium transition bg-white text-slate-800 shadow-sm';
-                    viewListBtn.className = 'px-2.5 py-1.5 rounded-lg font-medium transition text-slate-500 hover:text-slate-800';
-                    listViewContainer.classList.add('hidden');
-                    graphViewContainer.classList.remove('hidden');
-                    initGraphCanvas();
-                };
-
-                document.getElementById('toggleAllNodesBtn').onclick = openDrawer;
-                document.getElementById('closeDrawerBtn').onclick = closeDrawer;
-                document.getElementById('allNodesDrawer').onclick = (e) => {
-                    if (e.target.id === 'allNodesDrawer') closeDrawer();
-                };
-
-                document.getElementById('drawerSearchInput').addEventListener('input', renderDrawerAllNodes);
-
-                const filterAllBtn = document.getElementById('filterAllBtn');
-                const filterIsolatedBtn = document.getElementById('filterIsolatedBtn');
-
-                filterAllBtn.onclick = () => {
-                    filterAllBtn.className = 'flex-1 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded border border-indigo-200 text-center';
-                    filterIsolatedBtn.className = 'flex-1 py-1 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 text-center';
-                    renderDrawerAllNodes();
-                };
-
-                filterIsolatedBtn.onclick = () => {
-                    filterIsolatedBtn.className = 'flex-1 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded border border-indigo-200 text-center';
-                    filterAllBtn.className = 'flex-1 py-1 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 text-center';
-                    renderDrawerAllNodes();
-                };
-
-                const dataModal = document.getElementById('dataModal');
-                document.getElementById('toggleDataModalBtn').onclick = () => dataModal.classList.remove('hidden');
-                document.getElementById('closeDataModalBtn').onclick = () => dataModal.classList.add('hidden');
-                document.getElementById('dataModalDoneBtn').onclick = () => dataModal.classList.add('hidden');
-
-                document.getElementById('exportJsonBtn').onclick = async () => {
-                    try {
-                        const data = await api('GET', '/export');
-                        const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
-                        const downloadAnchor = document.createElement('a');
-                        downloadAnchor.setAttribute('href', dataStr);
-                        downloadAnchor.setAttribute('download', 'concept_network_' + new Date().toISOString().slice(0,10) + '.json');
-                        document.body.appendChild(downloadAnchor);
-                        downloadAnchor.click();
-                        downloadAnchor.remove();
-                    } catch (err) {
-                        alert('エクスポートに失敗しました: ' + err.message);
-                    }
-                };
-
-                document.getElementById('importJsonInput').addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = async (event) => {
-                        try {
-                            const data = JSON.parse(event.target.result);
-                            if (data.nodes && data.edges) {
-                                await api('POST', '/import', data);
-                                await loadAllData();
-                                appState.focusedNodeId = Object.keys(appState.nodes)[0] || null;
-                                appState.history = [];
-                                renderAll();
-                                dataModal.classList.add('hidden');
-                                alert('データを復元しました。');
-                            } else {
-                                alert('無効なデータ形式です。');
-                            }
-                        } catch (err) {
-                            alert('JSONファイルの解析に失敗しました。');
-                        }
-                    };
-                    reader.readAsText(file);
-                });
-
-                document.getElementById('resetDataBtn').onclick = async () => {
-                    if (confirm('すべての概念と接続データを初期化しますか？この操作は取り消せません。')) {
-                        await api('POST', '/reset');
-                        await loadAllData();
-                        const firstId = Object.keys(appState.nodes)[0];
-                        setFocusedNode(firstId, false);
-                        dataModal.classList.add('hidden');
-                    }
-                };
-
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('#globalSearchInput') && !e.target.closest('#globalSearchDropdown')) {
-                        hideDropdown('globalSearchDropdown');
-                    }
-                    if (!e.target.closest('#connectInput') && !e.target.closest('#connectDropdown')) {
-                        hideDropdown('connectDropdown');
-                    }
-                });
-            }
-
-            async function submitConnectInput() {
-                const connectInput = document.getElementById('connectInput');
-                const val = connectInput.value.trim();
-                if (!val || !appState.focusedNodeId) return;
-                const tokens = val.split(/[,、]/).map(t => t.trim()).filter(Boolean);
-                for (const token of tokens) {
-                    const targetNode = await getOrCreateNode(token);
-                    if (targetNode) {
-                        await createEdgeInternal(appState.focusedNodeId, targetNode.id);
-                    }
-                }
-                renderAll();
-                connectInput.value = '';
-                hideDropdown('connectDropdown');
-                connectInput.focus();
-            }
-
-            function renderGlobalSearchDropdown(query) {
-                const dropdown = document.getElementById('globalSearchDropdown');
-                dropdown.innerHTML = '';
-                activeGlobalSearchIndex = -1;
-                if (!query) {
-                    hideDropdown('globalSearchDropdown');
-                    return;
-                }
-                const matches = Object.values(appState.nodes).filter(n =>
-                    n.name.toLowerCase().includes(query.toLowerCase())
-                ).slice(0, 6);
-                matches.forEach(node => {
-                    const item = document.createElement('div');
-                    item.className = 'search-autocomplete-item px-4 py-2 hover:bg-indigo-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
-                    item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-slate-400">ジャンプ</span>';
-                    item.onclick = () => {
-                        setFocusedNode(node.id, true);
-                        document.getElementById('globalSearchInput').value = '';
-                        document.getElementById('clearGlobalSearch').classList.add('hidden');
-                        hideDropdown('globalSearchDropdown');
-                    };
-                    dropdown.appendChild(item);
-                });
-                const createOption = document.createElement('div');
-                createOption.className = 'search-autocomplete-item px-4 py-2 hover:bg-indigo-50 cursor-pointer text-xs font-semibold text-indigo-600 bg-slate-50 flex items-center gap-1.5';
-                createOption.innerHTML = '<i class="fa-solid fa-plus text-[10px]"></i> 「' + escapeHtml(query) + '」を新規作成してジャンプ';
-                createOption.onclick = () => {
-                    getOrCreateNode(query).then(node => {
-                        if (node) {
-                            setFocusedNode(node.id, true);
-                            document.getElementById('globalSearchInput').value = '';
-                            document.getElementById('clearGlobalSearch').classList.add('hidden');
-                            hideDropdown('globalSearchDropdown');
-                        }
-                    });
-                };
-                dropdown.appendChild(createOption);
-                dropdown.classList.remove('hidden');
-            }
-
-            function renderConnectSearchDropdown(query) {
-                const dropdown = document.getElementById('connectDropdown');
-                dropdown.innerHTML = '';
-                activeConnectSearchIndex = -1;
-                if (!query) {
-                    hideDropdown('connectDropdown');
-                    return;
-                }
-                const matches = Object.values(appState.nodes).filter(n =>
-                    n.id !== appState.focusedNodeId &&
-                    n.name.toLowerCase().includes(query.toLowerCase())
-                ).slice(0, 5);
-                matches.forEach(node => {
-                    const item = document.createElement('div');
-                    item.className = 'connect-autocomplete-item px-4 py-2 hover:bg-indigo-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
-                    item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-indigo-500 font-semibold">+ 接続</span>';
-                    item.onclick = async () => {
-                        await createEdgeInternal(appState.focusedNodeId, node.id);
-                        renderAll();
-                        document.getElementById('connectInput').value = '';
-                        hideDropdown('connectDropdown');
-                        document.getElementById('connectInput').focus();
-                    };
-                    dropdown.appendChild(item);
-                });
-                dropdown.classList.remove('hidden');
-            }
-
-            function highlightAutocompleteItem(items, activeIndex) {
-                items.forEach((item, idx) => {
-                    if (idx === activeIndex) {
-                        item.classList.add('bg-indigo-100');
-                    } else {
-                        item.classList.remove('bg-indigo-100');
-                    }
-                });
-            }
-
-            function hideDropdown(id) {
-                const el = document.getElementById(id);
-                if (el) el.classList.add('hidden');
-            }
-
-            function openDrawer() {
-                document.getElementById('allNodesDrawer').classList.remove('hidden');
-                renderDrawerAllNodes();
-            }
-
-            function closeDrawer() {
-                document.getElementById('allNodesDrawer').classList.add('hidden');
-            }
-
-            function highlightMatch(text, query) {
-                const idx = text.toLowerCase().indexOf(query.toLowerCase());
-                if (idx === -1) return escapeHtml(text);
-                const before = text.substring(0, idx);
-                const match = text.substring(idx, idx + query.length);
-                const after = text.substring(idx + query.length);
-                return escapeHtml(before) + '<span class="text-indigo-600 font-bold underline">' + escapeHtml(match) + '</span>' + escapeHtml(after);
-            }
-
-            function escapeHtml(str) {
-                return str.replace(/[&<>"']/g, (m) => ({
-                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-                })[m]);
-            }
-
-            function initGraphCanvas() {
-                const canvas = document.getElementById('networkCanvas');
-                const ctx = canvas.getContext('2d');
-                const container = canvas.parentElement;
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = container.clientWidth * dpr;
-                canvas.height = container.clientHeight * dpr;
-                ctx.scale(dpr, dpr);
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-                if (!appState.focusedNodeId) return;
-                const centerNode = appState.nodes[appState.focusedNodeId];
-                const connected = getConnectedNodes(appState.focusedNodeId);
-                graphNodes = [{
-                    id: centerNode.id,
-                    name: centerNode.name,
-                    x: width / 2,
-                    y: height / 2,
-                    vx: 0,
-                    vy: 0,
-                    isCenter: true,
-                    radius: 28
-                }];
-                const angleStep = (2 * Math.PI) / (connected.length || 1);
-                const radiusDist = Math.min(width, height) * 0.32;
-                connected.forEach((node, i) => {
-                    const angle = i * angleStep;
-                    graphNodes.push({
-                        id: node.id,
-                        name: node.name,
-                        x: width / 2 + Math.cos(angle) * radiusDist,
-                        y: height / 2 + Math.sin(angle) * radiusDist,
-                        vx: 0,
-                        vy: 0,
-                        isCenter: false,
-                        radius: 20
-                    });
-                });
-                let isDragging = false;
-                canvas.onmousedown = (e) => {
-                    const rect = canvas.getBoundingClientRect();
-                    const mx = e.clientX - rect.left;
-                    const my = e.clientY - rect.top;
-                    const hit = graphNodes.find(n => {
-                        const dx = n.x - mx;
-                        const dy = n.y - my;
-                        return Math.sqrt(dx * dx + dy * dy) < n.radius;
-                    });
-                    if (hit) {
-                        draggedNode = hit;
-                        isDragging = true;
-                    }
-                };
-                canvas.onmousemove = (e) => {
-                    if (isDragging && draggedNode) {
-                        const rect = canvas.getBoundingClientRect();
-                        draggedNode.x = e.clientX - rect.left;
-                        draggedNode.y = e.clientY - rect.top;
-                    }
-                };
-                canvas.onmouseup = (e) => {
-                    if (draggedNode && isDragging) {
-                        if (draggedNode.id !== appState.focusedNodeId) {
-                            setFocusedNode(draggedNode.id, true);
-                        }
-                    }
-                    draggedNode = null;
-                    isDragging = false;
-                };
-                if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                function animate() {
-                    ctx.clearRect(0, 0, width, height);
-                    const center = graphNodes[0];
-                    graphNodes.forEach((node, i) => {
-                        if (i === 0) return;
-                        const dx = center.x - node.x;
-                        const dy = center.y - node.y;
-                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                        const force = (dist - radiusDist) * 0.02;
-                        node.vx += (dx / dist) * force;
-                        node.vy += (dy / dist) * force;
-                        graphNodes.forEach((other, j) => {
-                            if (i === j) return;
-                            const odx = node.x - other.x;
-                            const ody = node.y - other.y;
-                            const odist = Math.sqrt(odx * odx + ody * ody) || 1;
-                            if (odist < 80) {
-                                node.vx += (odx / odist) * 0.8;
-                                node.vy += (ody / odist) * 0.8;
-                            }
-                        });
-                        node.vx *= 0.85;
-                        node.vy *= 0.85;
-                        if (node !== draggedNode) {
-                            node.x += node.vx;
-                            node.y += node.vy;
-                        }
-                    });
-                    ctx.strokeStyle = '#475569';
-                    ctx.lineWidth = 2;
-                    graphNodes.forEach((node, i) => {
-                        if (i === 0) return;
-                        ctx.beginPath();
-                        ctx.moveTo(center.x, center.y);
-                        ctx.lineTo(node.x, node.y);
-                        ctx.stroke();
-                    });
-                    graphNodes.forEach(node => {
-                        ctx.beginPath();
-                        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = node.isCenter ? '#4f46e5' : '#1e293b';
-                        ctx.fill();
-                        ctx.strokeStyle = node.isCenter ? '#c7d2fe' : '#475569';
-                        ctx.lineWidth = node.isCenter ? 3 : 2;
-                        ctx.stroke();
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = node.isCenter ? 'bold 12px sans-serif' : '11px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        let label = node.name;
-                        if (label.length > 6) label = label.substring(0, 5) + '..';
-                        ctx.fillText(label, node.x, node.y);
-                    });
-                    animationFrameId = requestAnimationFrame(animate);
-                }
-                animate();
-            }
-
-            window.onload = init;
-        })();
-    </script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
