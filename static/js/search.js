@@ -73,7 +73,7 @@ export async function submitConnectInput() {
     var connectInput = document.getElementById('connectInput');
     var val = connectInput.value.trim();
     if (!val || !appState.focusedNodeId) return;
-    var tokens = val.split(/[,、]/).map(function(t) { return t.trim(); }).filter(Boolean);
+    var tokens = val.split(',').map(function(t) { return t.trim(); }).filter(Boolean);
     for (var i = 0; i < tokens.length; i++) {
         var targetNode = await getOrCreateNode(tokens[i]);
         if (targetNode) {

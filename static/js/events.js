@@ -37,6 +37,7 @@ export function setupEventListeners() {
             setActiveGlobalSearchIndex(Math.max(activeGlobalSearchIndex - 1, -1));
             highlightAutocompleteItem(items, activeGlobalSearchIndex);
         } else if (e.key === 'Enter') {
+            if (e.isComposing) return;
             e.preventDefault();
             if (activeGlobalSearchIndex >= 0 && items[activeGlobalSearchIndex]) {
                 items[activeGlobalSearchIndex].click();
@@ -88,6 +89,7 @@ export function setupEventListeners() {
             setActiveConnectSearchIndex(Math.max(activeConnectSearchIndex - 1, -1));
             highlightAutocompleteItem(items, activeConnectSearchIndex);
         } else if (e.key === 'Enter') {
+            if (e.isComposing) return;
             e.preventDefault();
             if (activeConnectSearchIndex >= 0 && items[activeConnectSearchIndex]) {
                 items[activeConnectSearchIndex].click();
