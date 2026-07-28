@@ -7,11 +7,46 @@ let sb;
 export function setSupabaseClient(client) { sb = client; }
 
 export async function loadAllData() {
-    var nodesRes = await sb.from('nodes').select('*');
-    appState.nodes = {};
-    if (nodesRes.data) {
-        nodesRes.data.forEach(function(n) { appState.nodes[n.id] = n; });
+    var pageSize = 1000;
+    var from = 0;
+    var allNodes = [];
+    while (true) {
+        var res = await sb.from('nodes').select('*').order('id').range(from, from + pageSize - 1);
+        if (res.error || !res.data || res.data.length === 0) break;
+        allNodes = allNodes.concat(res.data);
+        if (res.data.length < pageSize) break;
+        from += pageSize;
     }
+    appState.nodes = {};
+    allNodes.forEach(function(n) { appState.nodes[n.id] = n; });
+}
+
+export async function fetchAllNodes() {
+    var pageSize = 1000;
+    var from = 0;
+    var allNodes = [];
+    while (true) {
+        var res = await sb.from('nodes').select('*').order('id').range(from, from + pageSize - 1);
+        if (res.error || !res.data || res.data.length === 0) break;
+        allNodes = allNodes.concat(res.data);
+        if (res.data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allNodes;
+}
+
+export async function fetchAllEdges() {
+    var pageSize = 1000;
+    var from = 0;
+    var allEdges = [];
+    while (true) {
+        var res = await sb.from('edges').select('*').order('id').range(from, from + pageSize - 1);
+        if (res.error || !res.data || res.data.length === 0) break;
+        allEdges = allEdges.concat(res.data);
+        if (res.data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allEdges;
 }
 
 export async function loadIsolatedNodeIds() {

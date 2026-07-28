@@ -194,9 +194,10 @@ export function setupEventListeners() {
 
     document.getElementById('exportJsonBtn').onclick = async function() {
         try {
-            var nodesRes = await sb.from('nodes').select('*');
-            var edgesRes = await sb.from('edges').select('*');
-            var data = { nodes: nodesRes.data || [], edges: edgesRes.data || [] };
+            var m = await import('./supabase-api.js');
+            var nodes = await m.fetchAllNodes();
+            var edges = await m.fetchAllEdges();
+            var data = { nodes: nodes, edges: edges };
             var dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
             var a = document.createElement('a');
             a.setAttribute('href', dataStr);
