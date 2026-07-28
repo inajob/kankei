@@ -103,3 +103,15 @@ CREATE POLICY "edges_delete" ON edges FOR DELETE USING (auth.role() = 'authentic
 -- Realtime (ダッシュボードで手動有効化が必要な場合あり)
 -- Dashboard → Database → Replication → supabase_realtime パブリケーションに追加
 -- ============================================================
+
+-- 孤立ノード取得関数
+CREATE OR REPLACE FUNCTION get_isolated_node_ids()
+RETURNS SETOF text AS $$
+  SELECT n.id FROM nodes n
+  WHERE NOT EXISTS (
+    SELECT 1 FROM edges e WHERE e.node1 = n.id OR e.node2 = n.id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_isolated_node_ids() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_isolated_node_ids() TO anon;

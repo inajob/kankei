@@ -3,8 +3,9 @@ import { setAnimationFrameId } from './state.js';
 import { isNodeIsolated, escapeHtml, setFocusedNode } from './utils.js';
 import { getUserName } from './auth.js';
 import { showToast } from './toast.js';
+import { loadEdgesForNodeIds, loadIsolatedNodeIds } from './supabase-api.js';
 
-export function renderAll() {
+export async function renderAll() {
     var overviewSection = document.getElementById('overviewSection');
     var focusSection = document.getElementById('focusSection');
     var breadcrumbNav = document.getElementById('breadcrumbNav');
@@ -19,9 +20,13 @@ export function renderAll() {
     if (focusSection) focusSection.classList.toggle('hidden', showOverview);
     if (breadcrumbNav) breadcrumbNav.classList.toggle('hidden', showOverview);
 
+    var isolatedIds = await loadIsolatedNodeIds();
     if (showOverview) {
-        renderOverview();
+        renderOverview(isolatedIds);
     } else {
+        await loadEdgesForNodeIds([appState.focusedNodeId]);
+        var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
+        await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]));
         renderFocusedConcept();
         renderBreadcrumbs();
         renderConnectedList();
@@ -36,11 +41,11 @@ export function renderAll() {
             if (graphViewContainer) graphViewContainer.classList.add('hidden');
         }
     }
-    renderDrawerAllNodes();
+    renderDrawerAllNodes(isolatedIds);
     renderGuestMode();
 }
 
-function renderOverview() {
+function renderOverview(isolatedIds) {
     var allNodes = Object.values(appState.nodes);
 
     var listEl = document.getElementById('overviewNodeList');
@@ -53,7 +58,7 @@ function renderOverview() {
     }
 
     allNodes.forEach(function(node) {
-        var isolated = isNodeIsolated(node.id);
+        var isolated = isolatedIds.has(node.id);
         var card = document.createElement('div');
         card.className = 'px-4 py-3 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-xl cursor-pointer transition text-base font-semibold text-slate-700 hover:text-green-700 truncate';
         card.title = node.name;
@@ -179,15 +184,15 @@ function renderConnectedList() {
     });
 }
 
-function renderDrawerAllNodes() {
+function renderDrawerAllNodes(isolatedIds) {
     var drawerListEl = document.getElementById('allNodesList');
     var countBadgeEl = document.getElementById('totalConceptsBadge');
     var searchVal = document.getElementById('drawerSearchInput').value.toLowerCase().trim();
-    var isIsolatedOnly = document.getElementById('filterIsolatedBtn').classList.contains('bg-green-50');
+    var isIsolatedOnly = document.getElementById('filterIsolatedBtn') && document.getElementById('filterIsolatedBtn').classList.contains('bg-green-50');
     drawerListEl.innerHTML = '';
     var allNodes = Object.values(appState.nodes);
     countBadgeEl.innerText = allNodes.length;
-    if (isIsolatedOnly) allNodes = allNodes.filter(function(n) { return isNodeIsolated(n.id); });
+    if (isIsolatedOnly && isolatedIds) allNodes = allNodes.filter(function(n) { return isolatedIds.has(n.id); });
     if (searchVal) allNodes = allNodes.filter(function(n) { return n.name.toLowerCase().includes(searchVal); });
     allNodes.sort(function(a, b) { return a.name.localeCompare(b.name, 'ja'); });
     if (allNodes.length === 0) {
@@ -195,7 +200,7 @@ function renderDrawerAllNodes() {
         return;
     }
     allNodes.forEach(function(node) {
-        var isolated = isNodeIsolated(node.id);
+        var isolated = isolatedIds && isolatedIds.has(node.id);
         var isCurrent = node.id === appState.focusedNodeId;
         var li = document.createElement('li');
         li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 last:border-b-0 ' + (isCurrent ? 'bg-green-50 text-green-700 font-bold' : 'hover:bg-slate-50 text-slate-700');

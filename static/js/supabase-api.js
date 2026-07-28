@@ -12,18 +12,24 @@ export async function loadAllData() {
     if (nodesRes.data) {
         nodesRes.data.forEach(function(n) { appState.nodes[n.id] = n; });
     }
-    var allEdges = [];
-    var from = 0;
-    var batchSize = 1000;
-    while (true) {
-        var batch = await sb.from('edges').select('*').range(from, from + batchSize - 1);
-        if (batch.error || !batch.data || batch.data.length === 0) break;
-        allEdges = allEdges.concat(batch.data);
-        if (batch.data.length < batchSize) break;
-        from += batchSize;
+}
+
+export async function loadIsolatedNodeIds() {
+    var res = await sb.rpc('get_isolated_node_ids');
+    return new Set(res.data || []);
+}
+
+export async function loadEdgesForNodeIds(nodeIds) {
+    if (!nodeIds || nodeIds.length === 0) return;
+    appState.edges = [];
+    for (var i = 0; i < nodeIds.length; i += 50) {
+        var chunk = nodeIds.slice(i, i + 50);
+        var ids = chunk.map(function(id) { return id; }).join(',');
+        var res = await sb.from('edges').select('*').or('node1.in.(' + ids + '),node2.in.(' + ids + ')');
+        if (res.data) appState.edges = appState.edges.concat(res.data);
     }
-    console.log('[kankei] loadAllData edges:', allEdges.length);
-    appState.edges = allEdges;
+    var seen = {};
+    appState.edges = appState.edges.filter(function(e) { if (seen[e.id]) return false; seen[e.id] = true; return true; });
 }
 
 export async function getOrCreateNode(name) {
@@ -45,10 +51,6 @@ export async function getOrCreateNode(name) {
 
 export async function createEdgeInternal(nodeId1, nodeId2) {
     if (!nodeId1 || !nodeId2 || nodeId1 === nodeId2) return null;
-    var exists = appState.edges.some(function(e) {
-        return (e.node1 === nodeId1 && e.node2 === nodeId2) || (e.node1 === nodeId2 && e.node2 === nodeId1);
-    });
-    if (exists) return null;
     var res = await sb.from('edges').insert({
         id: generateId(),
         node1: nodeId1,
@@ -57,10 +59,7 @@ export async function createEdgeInternal(nodeId1, nodeId2) {
     }).select().single();
     if (res.error) {
         if (res.error.code === '23505') {
-            console.log('[kankei] edge already exists, reloading. node1:', nodeId1, 'node2:', nodeId2);
-            await loadAllData();
-            console.log('[kankei] after reload, edges count:', appState.edges.length);
-            return { ok: true };
+            return { ok: true, exists: true };
         }
         return { error: '接続の作成に失敗しました: ' + res.error.message };
     }
