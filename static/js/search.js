@@ -3,6 +3,57 @@ import { setActiveGlobalSearchIndex, setActiveConnectSearchIndex } from './state
 import { getOrCreateNode, createEdgeInternal } from './supabase-api.js';
 import { highlightMatch, hideDropdown, highlightAutocompleteItem } from './utils.js';
 import { setFocusedNode } from './utils.js';
+import { fetchWikiSuggestions } from './wiki.js';
+
+function renderWikiSection(container, query, type) {
+    var existing = container.querySelector('.wiki-section');
+    if (existing) existing.remove();
+
+    var section = document.createElement('div');
+    section.className = 'wiki-section';
+    section.innerHTML = '<div class="wiki-header"><i class="fa-brands fa-wikipedia-w"></i> Wikipedia</div><div class="wiki-loading">検索中...</div>';
+    container.appendChild(section);
+    container.classList.remove('hidden');
+
+    fetchWikiSuggestions(query, function(results) {
+        section.innerHTML = '<div class="wiki-header"><i class="fa-brands fa-wikipedia-w"></i> Wikipedia</div>';
+        if (!results || results.length === 0) {
+            section.remove();
+            return;
+        }
+        results.forEach(function(item) {
+            var el = document.createElement('div');
+            el.className = 'wiki-item px-4 py-2 hover:bg-blue-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
+            el.innerHTML = '<div class="min-w-0"><span class="font-medium">' + escapeHtml(item.title) + '</span>' + (item.description ? '<span class="text-[10px] text-slate-400 ml-2">' + escapeHtml(item.description) + '</span>' : '') + '</div><span class="text-[10px] text-blue-500 font-semibold shrink-0 ml-2">+ 新規作成</span>';
+            el.onclick = function() {
+                getOrCreateNode(item.title).then(function(node) {
+                    if (!node) return;
+                    if (type === 'global') {
+                        setFocusedNode(node.id, true);
+                        document.getElementById('globalSearchInput').value = '';
+                        document.getElementById('clearGlobalSearch').classList.add('hidden');
+                        hideDropdown('globalSearchDropdown');
+                        window._renderAll && window._renderAll();
+                    } else {
+                        createEdgeInternal(appState.focusedNodeId, node.id).then(function() {
+                            window._renderAll && window._renderAll();
+                        });
+                        document.getElementById('connectInput').value = '';
+                        hideDropdown('connectDropdown');
+                        document.getElementById('connectInput').focus();
+                    }
+                });
+            };
+            section.appendChild(el);
+        });
+    });
+}
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+}
 
 export function renderGlobalSearchDropdown(query) {
     var dropdown = document.getElementById('globalSearchDropdown');
@@ -42,6 +93,7 @@ export function renderGlobalSearchDropdown(query) {
         };
         dropdown.appendChild(createOption);
     }
+    renderWikiSection(dropdown, query, 'global');
     dropdown.classList.remove('hidden');
 }
 
@@ -66,6 +118,7 @@ export function renderConnectSearchDropdown(query) {
         };
         dropdown.appendChild(item);
     });
+    renderWikiSection(dropdown, query, 'connect');
     dropdown.classList.remove('hidden');
 }
 
