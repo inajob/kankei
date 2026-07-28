@@ -105,6 +105,7 @@ export function setupEventListeners() {
 
     document.getElementById('homeBtn').onclick = function() {
         appState.focusedNodeId = null;
+        appState.history = [];
         history.pushState(null, '', window.location.pathname);
         renderAll();
     };

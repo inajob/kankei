@@ -2,6 +2,7 @@ import { appState, currentUser, currentUserRole, animationFrameId } from './stat
 import { setAnimationFrameId } from './state.js';
 import { isNodeIsolated, escapeHtml, setFocusedNode } from './utils.js';
 import { getUserName } from './auth.js';
+import { showToast } from './toast.js';
 
 export function renderAll() {
     var overviewSection = document.getElementById('overviewSection');
@@ -61,6 +62,7 @@ function renderOverview() {
             card.innerHTML = escapeHtml(node.name) + ' <span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal ml-1">孤立</span>';
         }
         card.onclick = function() {
+            appState.history = [];
             setFocusedNode(node.id, true);
             renderAll();
         };
@@ -167,7 +169,10 @@ function renderConnectedList() {
         if (removeBtn) {
             removeBtn.onclick = function(e) {
                 e.stopPropagation();
-                window._removeEdge && window._removeEdge(appState.focusedNodeId, node.id).then(function() { renderAll(); });
+                window._removeEdge && window._removeEdge(appState.focusedNodeId, node.id).then(function(result) {
+                    if (result && result.error) { showToast(result.error, 'error'); return; }
+                    renderAll();
+                });
             };
         }
         listEl.appendChild(chip);
@@ -194,7 +199,7 @@ function renderDrawerAllNodes() {
         var isCurrent = node.id === appState.focusedNodeId;
         var li = document.createElement('li');
         li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 last:border-b-0 ' + (isCurrent ? 'bg-green-50 text-green-700 font-bold' : 'hover:bg-slate-50 text-slate-700');
-        li.onclick = function() { setFocusedNode(node.id, true); renderAll(); window._closeDrawer && window._closeDrawer(); };
+        li.onclick = function() { appState.history = []; setFocusedNode(node.id, true); renderAll(); window._closeDrawer && window._closeDrawer(); };
         li.innerHTML = '<span class="truncate text-xs leading-tight">' + escapeHtml(node.name) + '</span>' + (isolated ? '<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal shrink-0 ml-1">孤立</span>' : '');
         drawerListEl.appendChild(li);
     });

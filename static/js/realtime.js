@@ -1,5 +1,6 @@
 import { appState } from './state.js';
 import { showToast } from './toast.js';
+import { loadAllData } from './supabase-api.js';
 
 let sb;
 
@@ -64,9 +65,9 @@ export function subscribeRealtime() {
             console.log('[kankei] realtime subscribe status:', status);
             if (status === 'SUBSCRIBED') {
                 console.log('[kankei] realtime connected successfully');
-            } else if (status === 'CHANNEL_ERROR') {
-                console.error('[kankei] realtime channel error');
-                showToast('リアルタイム接続に失敗しました', 'error');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                console.error('[kankei] realtime channel error/reconnect:', status);
+                loadAllData().then(function() { window._renderAll && window._renderAll(); });
             }
         });
 }

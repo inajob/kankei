@@ -64,6 +64,9 @@ export function initGraphCanvas() {
     canvas.onmouseup = function(e) {
         if (localDraggedNode && isDragging) {
             if (localDraggedNode.id !== appState.focusedNodeId) {
+                if (localDraggedNode.depth === 2 && localDraggedNode.parentId && appState.nodes[localDraggedNode.parentId]) {
+                    setFocusedNode(localDraggedNode.parentId, true);
+                }
                 setFocusedNode(localDraggedNode.id, true);
                 window._renderAll && window._renderAll();
             }

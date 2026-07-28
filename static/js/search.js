@@ -4,6 +4,7 @@ import { getOrCreateNode, createEdgeInternal } from './supabase-api.js';
 import { highlightMatch, hideDropdown, highlightAutocompleteItem } from './utils.js';
 import { setFocusedNode } from './utils.js';
 import { fetchWikiSuggestions } from './wiki.js';
+import { showToast } from './toast.js';
 
 function renderWikiSection(container, query, type) {
     var existing = container.querySelector('.wiki-section');
@@ -29,13 +30,15 @@ function renderWikiSection(container, query, type) {
                 getOrCreateNode(item.title).then(function(node) {
                     if (!node) return;
                     if (type === 'global') {
+                        appState.history = [];
                         setFocusedNode(node.id, true);
                         document.getElementById('globalSearchInput').value = '';
                         document.getElementById('clearGlobalSearch').classList.add('hidden');
                         hideDropdown('globalSearchDropdown');
                         window._renderAll && window._renderAll();
                     } else {
-                        createEdgeInternal(appState.focusedNodeId, node.id).then(function() {
+                        createEdgeInternal(appState.focusedNodeId, node.id).then(function(result) {
+                            if (result && result.error) { showToast(result.error, 'error'); }
                             window._renderAll && window._renderAll();
                         });
                         document.getElementById('connectInput').value = '';
@@ -68,6 +71,7 @@ export function renderGlobalSearchDropdown(query) {
         item.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
         item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-slate-400">ジャンプ</span>';
         item.onclick = function() {
+            appState.history = [];
             setFocusedNode(node.id, true);
             document.getElementById('globalSearchInput').value = '';
             document.getElementById('clearGlobalSearch').classList.add('hidden');
@@ -83,6 +87,7 @@ export function renderGlobalSearchDropdown(query) {
         createOption.onclick = function() {
             getOrCreateNode(query).then(function(node) {
                 if (node) {
+                    appState.history = [];
                     setFocusedNode(node.id, true);
                     document.getElementById('globalSearchInput').value = '';
                     document.getElementById('clearGlobalSearch').classList.add('hidden');
@@ -110,7 +115,8 @@ export function renderConnectSearchDropdown(query) {
         item.className = 'connect-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
         item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-green-500 font-semibold">+ 接続</span>';
         item.onclick = async function() {
-            await createEdgeInternal(appState.focusedNodeId, node.id);
+            var result = await createEdgeInternal(appState.focusedNodeId, node.id);
+            if (result && result.error) { showToast(result.error, 'error'); }
             window._renderAll && window._renderAll();
             document.getElementById('connectInput').value = '';
             hideDropdown('connectDropdown');
@@ -130,7 +136,8 @@ export async function submitConnectInput() {
     for (var i = 0; i < tokens.length; i++) {
         var targetNode = await getOrCreateNode(tokens[i]);
         if (targetNode) {
-            await createEdgeInternal(appState.focusedNodeId, targetNode.id);
+            var result = await createEdgeInternal(appState.focusedNodeId, targetNode.id);
+            if (result && result.error) { showToast(result.error, 'error'); }
         }
     }
     window._renderAll && window._renderAll();
