@@ -2,7 +2,7 @@ import { appState, currentUser, currentUserRole, activeGlobalSearchIndex, active
 import { setActiveGlobalSearchIndex, setActiveConnectSearchIndex } from './state.js';
 import { setFocusedNode, hideDropdown, highlightAutocompleteItem } from './utils.js';
 import { renderGlobalSearchDropdown, renderConnectSearchDropdown, submitConnectInput } from './search.js';
-import { deleteNode, removeEdge } from './supabase-api.js';
+import { deleteNode, removeEdge, getOrCreateNode } from './supabase-api.js';
 import { renderAll } from './render.js';
 import { showToast } from './toast.js';
 import { setupUsernameHandlers } from './auth.js';
@@ -19,56 +19,58 @@ export function setupEventListeners() {
     var globalInput = document.getElementById('globalSearchInput');
     var clearGlobalBtn = document.getElementById('clearGlobalSearch');
 
-    globalInput.addEventListener('input', function() {
-        var val = globalInput.value.trim();
-        clearGlobalBtn.classList.toggle('hidden', val.length === 0);
-        renderGlobalSearchDropdown(val);
-    });
+    if (globalInput) {
+        globalInput.addEventListener('input', function() {
+            var val = globalInput.value.trim();
+            clearGlobalBtn.classList.toggle('hidden', val.length === 0);
+            renderGlobalSearchDropdown(val);
+        });
 
-    globalInput.addEventListener('keydown', function(e) {
-        var dropdown = document.getElementById('globalSearchDropdown');
-        var items = dropdown.querySelectorAll('.search-autocomplete-item');
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setActiveGlobalSearchIndex(Math.min(activeGlobalSearchIndex + 1, items.length - 1));
-            highlightAutocompleteItem(items, activeGlobalSearchIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setActiveGlobalSearchIndex(Math.max(activeGlobalSearchIndex - 1, -1));
-            highlightAutocompleteItem(items, activeGlobalSearchIndex);
-        } else if (e.key === 'Enter') {
-            if (e.isComposing) return;
-            e.preventDefault();
-            if (activeGlobalSearchIndex >= 0 && items[activeGlobalSearchIndex]) {
-                items[activeGlobalSearchIndex].click();
-            } else {
-                if (!currentUser) return;
-                var val = globalInput.value.trim();
-                if (val) {
-                    import('./supabase-api.js').then(function(m) {
-                        m.getOrCreateNode(val).then(function(node) {
-                            if (node) {
-                                setFocusedNode(node.id, true);
-                                globalInput.value = '';
-                                clearGlobalBtn.classList.add('hidden');
-                                hideDropdown('globalSearchDropdown');
-                                renderAll();
-                            }
+        globalInput.addEventListener('keydown', function(e) {
+            var dropdown = document.getElementById('globalSearchDropdown');
+            var items = dropdown.querySelectorAll('.search-autocomplete-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveGlobalSearchIndex(Math.min(activeGlobalSearchIndex + 1, items.length - 1));
+                highlightAutocompleteItem(items, activeGlobalSearchIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveGlobalSearchIndex(Math.max(activeGlobalSearchIndex - 1, -1));
+                highlightAutocompleteItem(items, activeGlobalSearchIndex);
+            } else if (e.key === 'Enter') {
+                if (e.isComposing) return;
+                e.preventDefault();
+                if (activeGlobalSearchIndex >= 0 && items[activeGlobalSearchIndex]) {
+                    items[activeGlobalSearchIndex].click();
+                } else {
+                    if (!currentUser) return;
+                    var val = globalInput.value.trim();
+                    if (val) {
+                        import('./supabase-api.js').then(function(m) {
+                            m.getOrCreateNode(val).then(function(node) {
+                                if (node) {
+                                    setFocusedNode(node.id, true);
+                                    globalInput.value = '';
+                                    clearGlobalBtn.classList.add('hidden');
+                                    hideDropdown('globalSearchDropdown');
+                                    renderAll();
+                                }
+                            });
                         });
-                    });
+                    }
                 }
+            } else if (e.key === 'Escape') {
+                hideDropdown('globalSearchDropdown');
             }
-        } else if (e.key === 'Escape') {
-            hideDropdown('globalSearchDropdown');
-        }
-    });
+        });
 
-    clearGlobalBtn.onclick = function() {
-        globalInput.value = '';
-        clearGlobalBtn.classList.add('hidden');
-        hideDropdown('globalSearchDropdown');
-        globalInput.focus();
-    };
+        clearGlobalBtn.onclick = function() {
+            globalInput.value = '';
+            clearGlobalBtn.classList.add('hidden');
+            hideDropdown('globalSearchDropdown');
+            globalInput.focus();
+        };
+    }
 
     var connectInput = document.getElementById('connectInput');
     var connectBtn = document.getElementById('connectBtn');
@@ -155,7 +157,8 @@ export function setupEventListeners() {
         window._initGraphCanvas && window._initGraphCanvas();
     };
 
-    document.getElementById('toggleAllNodesBtn').onclick = function() {
+    var toggleAllNodesBtn = document.getElementById('toggleAllNodesBtn');
+    if (toggleAllNodesBtn) toggleAllNodesBtn.onclick = function() {
         document.getElementById('allNodesDrawer').classList.remove('hidden');
         renderAll();
     };
@@ -187,6 +190,7 @@ export function setupEventListeners() {
     document.getElementById('toggleDataModalBtn').onclick = function() { dataModal.classList.remove('hidden'); };
     document.getElementById('closeDataModalBtn').onclick = function() { dataModal.classList.add('hidden'); };
     document.getElementById('dataModalDoneBtn').onclick = function() { dataModal.classList.add('hidden'); };
+
 
     document.getElementById('exportJsonBtn').onclick = async function() {
         try {
