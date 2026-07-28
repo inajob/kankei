@@ -105,12 +105,15 @@ export function setupEventListeners() {
 
     connectBtn.onclick = function() { submitConnectInput(); };
 
-    document.getElementById('homeBtn').onclick = function() {
+    function goHome() {
         appState.focusedNodeId = null;
         appState.history = [];
         history.pushState(null, '', window.location.pathname);
         renderAll();
-    };
+    }
+    document.getElementById('homeBtn').onclick = goHome;
+    var desktopHomeBtn = document.getElementById('desktopHomeBtn');
+    if (desktopHomeBtn) desktopHomeBtn.onclick = goHome;
 
     document.getElementById('deleteFocusedConceptBtn').onclick = function() {
         if (!appState.focusedNodeId) return;
@@ -278,10 +281,18 @@ export function setupEventListeners() {
         if (!e.target.closest('#userMenu')) {
             document.getElementById('userDropdown').classList.add('hidden');
         }
+        if (!e.target.closest('#desktopUserMenu')) {
+            var dd = document.getElementById('desktopUserDropdown');
+            if (dd) dd.classList.add('hidden');
+        }
     });
 
     document.getElementById('userAvatarBtn').onclick = function() {
         document.getElementById('userDropdown').classList.toggle('hidden');
+    };
+    var desktopUserAvatarBtn = document.getElementById('desktopUserAvatarBtn');
+    if (desktopUserAvatarBtn) desktopUserAvatarBtn.onclick = function() {
+        document.getElementById('desktopUserDropdown').classList.toggle('hidden');
     };
 
     document.getElementById('logoutBtn').onclick = async function() {
@@ -289,6 +300,17 @@ export function setupEventListeners() {
         import('./state.js').then(function(m) { m.resetAppState(); });
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('headerLoginBtn').classList.remove('hidden');
+        renderAll();
+    };
+    var desktopLogoutBtn = document.getElementById('desktopLogoutBtn');
+    if (desktopLogoutBtn) desktopLogoutBtn.onclick = async function() {
+        await sb.auth.signOut();
+        import('./state.js').then(function(m) { m.resetAppState(); });
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('userMenu').classList.add('hidden');
+        document.getElementById('desktopUserMenu').classList.add('hidden');
+        document.getElementById('desktopHeaderLoginBtn').classList.remove('hidden');
         document.getElementById('headerLoginBtn').classList.remove('hidden');
         renderAll();
     };
@@ -304,11 +326,18 @@ export function setupEventListeners() {
     document.getElementById('guestBtn').onclick = function() {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('headerLoginBtn').classList.remove('hidden');
+        var dhl = document.getElementById('desktopHeaderLoginBtn');
+        if (dhl) dhl.classList.remove('hidden');
         window._enterGuestMode && window._enterGuestMode();
     };
 
-    document.getElementById('headerLoginBtn').onclick = function() {
+    function showLoginScreen() {
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('headerLoginBtn').classList.add('hidden');
-    };
+        var dhl = document.getElementById('desktopHeaderLoginBtn');
+        if (dhl) dhl.classList.add('hidden');
+    }
+    document.getElementById('headerLoginBtn').onclick = showLoginScreen;
+    var desktopHeaderLoginBtn = document.getElementById('desktopHeaderLoginBtn');
+    if (desktopHeaderLoginBtn) desktopHeaderLoginBtn.onclick = showLoginScreen;
 }

@@ -54,6 +54,8 @@ window.addEventListener('hashchange', function() {
 function enterGuestMode() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('headerLoginBtn').classList.remove('hidden');
+    var dhl = document.getElementById('desktopHeaderLoginBtn');
+    if (dhl) dhl.classList.remove('hidden');
     loadDataAndRender().then(function() {
         subscribeRealtime();
     });
@@ -66,6 +68,8 @@ async function init() {
     } else {
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('headerLoginBtn').classList.remove('hidden');
+        var dhl = document.getElementById('desktopHeaderLoginBtn');
+        if (dhl) dhl.classList.remove('hidden');
         setupEventListeners();
     }
 
@@ -73,12 +77,18 @@ async function init() {
         if (event === 'SIGNED_IN' && session) {
             setCurrentUser(session.user);
             document.getElementById('headerLoginBtn').classList.add('hidden');
+            var dhl = document.getElementById('desktopHeaderLoginBtn');
+            if (dhl) dhl.classList.add('hidden');
             await onLoggedIn(loadDataAndRender, subscribeRealtime);
         } else if (event === 'SIGNED_OUT') {
             resetAppState();
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('userMenu').classList.add('hidden');
             document.getElementById('headerLoginBtn').classList.remove('hidden');
+            var du = document.getElementById('desktopUserMenu');
+            if (du) du.classList.add('hidden');
+            var dhl2 = document.getElementById('desktopHeaderLoginBtn');
+            if (dhl2) dhl2.classList.remove('hidden');
             renderAll();
         }
     });

@@ -19,6 +19,8 @@ export async function renderAll() {
     if (overviewSection) overviewSection.classList.toggle('hidden', !showOverview);
     if (focusSection) focusSection.classList.toggle('hidden', showOverview);
     if (breadcrumbNav) breadcrumbNav.classList.toggle('hidden', showOverview);
+    var desktopBreadcrumb = document.getElementById('desktopBreadcrumbNav');
+    if (desktopBreadcrumb) desktopBreadcrumb.classList.toggle('hidden', showOverview);
 
     var isolatedIds = await loadIsolatedNodeIds();
     if (showOverview) {
@@ -92,6 +94,10 @@ function renderGuestMode() {
     if (globalSearchInput) {
         globalSearchInput.placeholder = isGuest ? '概念を検索...' : '概念を検索 または 新規作成...';
     }
+    var desktopUserMenu = document.getElementById('desktopUserMenu');
+    var desktopHeaderLoginBtn = document.getElementById('desktopHeaderLoginBtn');
+    if (desktopUserMenu) desktopUserMenu.classList.toggle('hidden', isGuest);
+    if (desktopHeaderLoginBtn) desktopHeaderLoginBtn.classList.toggle('hidden', !isGuest);
 }
 
 function renderFocusedConcept() {
@@ -116,8 +122,8 @@ function renderFocusedConcept() {
     deleteBtn.classList.toggle('hidden', !canDelete);
 }
 
-function renderBreadcrumbs() {
-    var navEl = document.getElementById('breadcrumbNav');
+function renderBreadcrumbContent(navEl) {
+    if (!navEl) return;
     navEl.innerHTML = '';
     if (appState.history.length === 0) {
         navEl.innerHTML = '<span class="text-slate-400 italic"><i class="fa-solid fa-compass mr-1"></i> 思考の軌跡がここに表示されます</span>';
@@ -149,6 +155,11 @@ function renderBreadcrumbs() {
     }
 }
 
+function renderBreadcrumbs() {
+    renderBreadcrumbContent(document.getElementById('breadcrumbNav'));
+    renderBreadcrumbContent(document.getElementById('desktopBreadcrumbNav'));
+}
+
 function renderConnectedList() {
     var listEl = document.getElementById('connectedList');
     var countEl = document.getElementById('connectedCount');
@@ -169,7 +180,7 @@ function renderConnectedList() {
             renderAll();
         };
         var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-300 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除"><i class="fa-solid fa-xmark"></i></button>' : '';
-        chip.innerHTML = '<span class="truncate max-w-[120px]">' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
+        chip.innerHTML = '<span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
         var removeBtn = chip.querySelector('.remove-edge-btn');
         if (removeBtn) {
             removeBtn.onclick = function(e) {

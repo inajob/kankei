@@ -31,6 +31,12 @@ export async function checkSession() {
 export async function onLoggedIn(loadDataAndRender, subscribeRealtimeFn) {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('userMenu').classList.remove('hidden');
+    var desktopMenu = document.getElementById('desktopUserMenu');
+    if (desktopMenu) {
+        desktopMenu.classList.remove('hidden');
+        var desktopLogin = document.getElementById('desktopHeaderLoginBtn');
+        if (desktopLogin) desktopLogin.classList.add('hidden');
+    }
     var user = currentUser;
     if (user) {
         var avatar = user.user_metadata && user.user_metadata.avatar_url;
@@ -39,6 +45,12 @@ export async function onLoggedIn(loadDataAndRender, subscribeRealtimeFn) {
         document.getElementById('userAvatar').alt = name;
         document.getElementById('userName').textContent = name;
         document.getElementById('userEmail').textContent = user.email || '';
+        var desktopAvatar = document.getElementById('desktopUserAvatar');
+        if (desktopAvatar) { desktopAvatar.src = avatar || ''; desktopAvatar.alt = name; }
+        var desktopName = document.getElementById('desktopUserName');
+        if (desktopName) desktopName.textContent = name;
+        var desktopEmail = document.getElementById('desktopUserEmail');
+        if (desktopEmail) desktopEmail.textContent = user.email || '';
         try {
             var profileRes = await sb.from('profiles').select('role, username').eq('id', user.id).single();
             if (!profileRes.data) {
@@ -47,14 +59,20 @@ export async function onLoggedIn(loadDataAndRender, subscribeRealtimeFn) {
             }
             setCurrentUserRole((profileRes.data && profileRes.data.role) || 'user');
             if (profileRes.data && profileRes.data.username) {
-                document.getElementById('userName').textContent = profileRes.data.username + ' (' + name + ')';
+                var usernameDisplay = profileRes.data.username + ' (' + name + ')';
+                document.getElementById('userName').textContent = usernameDisplay;
+                if (desktopName) desktopName.textContent = usernameDisplay;
             }
         } catch (e) { setCurrentUserRole('user'); }
         var roleBadge = document.getElementById('userRoleBadge');
+        var desktopRoleBadge = document.getElementById('desktopUserRoleBadge');
         if (currentUserRole === 'admin') {
-            roleBadge.innerHTML = '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">ADMIN</span>';
+            var badgeHtml = '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">ADMIN</span>';
+            roleBadge.innerHTML = badgeHtml;
+            if (desktopRoleBadge) desktopRoleBadge.innerHTML = badgeHtml;
         } else {
             roleBadge.innerHTML = '';
+            if (desktopRoleBadge) desktopRoleBadge.innerHTML = '';
         }
     }
     await loadDataAndRender();
@@ -62,8 +80,9 @@ export async function onLoggedIn(loadDataAndRender, subscribeRealtimeFn) {
 }
 
 export function setupUsernameHandlers() {
-    document.getElementById('editUsernameBtn').onclick = async function() {
+    async function openUsernameModal() {
         document.getElementById('userDropdown').classList.add('hidden');
+        document.getElementById('desktopUserDropdown').classList.add('hidden');
         document.getElementById('usernameModal').classList.remove('hidden');
         document.getElementById('usernameError').classList.add('hidden');
         document.getElementById('usernameHint').classList.remove('hidden');
@@ -78,7 +97,10 @@ export function setupUsernameHandlers() {
                 }
             } catch (e) {}
         }
-    };
+    }
+    document.getElementById('editUsernameBtn').onclick = openUsernameModal;
+    var desktopEditBtn = document.getElementById('desktopEditUsernameBtn');
+    if (desktopEditBtn) desktopEditBtn.onclick = openUsernameModal;
 
     document.getElementById('closeUsernameModalBtn').onclick = function() {
         document.getElementById('usernameModal').classList.add('hidden');
