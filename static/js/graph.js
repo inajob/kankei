@@ -100,7 +100,7 @@ export function initGraphCanvas() {
         }
         ctx.lineWidth = 2;
         nodes.forEach(function(node, i) {
-            if (i === 0) return;
+            if (i === 0 || node.depth === 2) return;
             ctx.strokeStyle = '#475569';
             ctx.beginPath(); ctx.moveTo(center.x, center.y); ctx.lineTo(node.x, node.y); ctx.stroke();
         });
