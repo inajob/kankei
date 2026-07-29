@@ -223,17 +223,19 @@ function renderConnectedList2Hop(hop1Ids, hop2Ids) {
     }
     var hop2Set = new Set(hop2Ids);
     var excludedIds = new Set([appState.focusedNodeId].concat(hop1Ids));
-    var seen = new Set();
-    var hop2Entries = [];
+    var hop2Map = {};
     hop1Ids.forEach(function(pid) {
         var parentNode = appState.nodes[pid];
         if (!parentNode) return;
         getConnectedNodes(pid).forEach(function(n) {
-            if (excludedIds.has(n.id) || seen.has(n.id) || !hop2Set.has(n.id)) return;
-            seen.add(n.id);
-            hop2Entries.push({ id: n.id, name: n.name, parentId: pid, parentName: parentNode.name });
+            if (excludedIds.has(n.id) || !hop2Set.has(n.id)) return;
+            if (!hop2Map[n.id]) hop2Map[n.id] = { id: n.id, name: n.name, parents: [] };
+            if (!hop2Map[n.id].parents.some(function(p) { return p.id === pid; })) {
+                hop2Map[n.id].parents.push({ id: pid, name: parentNode.name });
+            }
         });
     });
+    var hop2Entries = Object.values(hop2Map);
     countEl.innerText = hop2Entries.length;
     if (hop2Entries.length === 0) return;
     if (sectionEl) sectionEl.classList.remove('hidden');
@@ -241,10 +243,12 @@ function renderConnectedList2Hop(hop1Ids, hop2Ids) {
         var chip = document.createElement('div');
         chip.className = 'group inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50/60 hover:bg-amber-100 text-slate-600 hover:text-amber-700 rounded-lg text-xs cursor-pointer transition border border-amber-200/50';
         chip.onclick = function() {
-            setFocusedNode(entry.id, true);
+            appState.history.push(appState.focusedNodeId);
+            appState.history.push(entry.parents[0].id);
+            setFocusedNode(entry.id, false);
             renderAll();
         };
-        chip.innerHTML = '<span>' + escapeHtml(entry.name) + '</span><span class="text-[10px] text-slate-400"> (' + escapeHtml(entry.parentName) + ')</span>';
+        chip.innerHTML = '<span>' + escapeHtml(entry.name) + '</span><span class="text-[10px] text-slate-400"> (' + escapeHtml(entry.parents.map(function(p) { return p.name; }).join(', ')) + ')</span>';
         listEl.appendChild(chip);
     });
 }
