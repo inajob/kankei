@@ -7,6 +7,7 @@ let sb;
 export function setSupabaseClient(client) { sb = client; }
 
 export function subscribeRealtime() {
+    if (sb.getChannels().some(function(c) { return c.topic === 'realtime:db-changes'; })) return;
     console.log('[kankei] subscribeRealtime called');
 
     sb.channel('db-changes')

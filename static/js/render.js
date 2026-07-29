@@ -26,9 +26,21 @@ export async function renderAll() {
     if (showOverview) {
         renderOverview(isolatedIds);
     } else {
-        await loadEdgesForNodeIds([appState.focusedNodeId]);
+        console.log('[renderAll] focusedNodeId:', appState.focusedNodeId);
+        await loadEdgesForNodeIds([appState.focusedNodeId], 'hop0');
         var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
-        await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]));
+        console.log('[renderAll] hop1Ids:', hop1Ids.length, hop1Ids.slice(0, 3));
+        await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
+        var knownIds = new Set([appState.focusedNodeId].concat(hop1Ids));
+        var hop2Ids = appState.edges.filter(function(e) {
+            return (hop1Ids.includes(e.node1) && !knownIds.has(e.node2)) ||
+                   (hop1Ids.includes(e.node2) && !knownIds.has(e.node1));
+        }).map(function(e) {
+            return hop1Ids.includes(e.node1) ? e.node2 : e.node1;
+        });
+        hop2Ids = [...new Set(hop2Ids)];
+        console.log('[renderAll] hop2Ids:', hop2Ids.length, hop2Ids.slice(0, 3));
+        await loadEdgesForNodeIds(hop2Ids, 'hop2');
         renderFocusedConcept();
         renderBreadcrumbs();
         renderConnectedList();
@@ -110,7 +122,10 @@ function renderFocusedConcept() {
     }
     var currentNode = appState.nodes[appState.focusedNodeId];
     titleEl.innerText = currentNode.name;
-    isolatedBadge.classList.toggle('hidden', !isNodeIsolated(currentNode.id));
+    console.log('[renderFocusedConcept] node:', currentNode.name, 'edges in appState:', appState.edges.length);
+    var isolated = isNodeIsolated(currentNode.id);
+    console.log('[renderFocusedConcept] isNodeIsolated:', isolated);
+    isolatedBadge.classList.toggle('hidden', !isolated);
     if (currentNode.created_by) {
         getUserName(currentNode.created_by).then(function(name) {
             creatorEl.textContent = '作成: ' + name;

@@ -25,7 +25,10 @@ export function getConnectedNodes(nodeId) {
 }
 
 export function isNodeIsolated(nodeId) {
-    return !appState.edges.some(function(e) { return e.node1 === nodeId || e.node2 === nodeId; });
+    var matching = appState.edges.filter(function(e) { return e.node1 === nodeId || e.node2 === nodeId; });
+    console.log('[isNodeIsolated] nodeId:', nodeId, 'matching edges:', matching.length, 'total edges:', appState.edges.length);
+    if (matching.length > 0) console.log('[isNodeIsolated] sample edge:', JSON.stringify(matching[0]));
+    return matching.length === 0;
 }
 
 export function setFocusedNode(nodeId, pushHistory) {

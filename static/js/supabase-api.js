@@ -54,17 +54,31 @@ export async function loadIsolatedNodeIds() {
     return new Set(res.data || []);
 }
 
-export async function loadEdgesForNodeIds(nodeIds) {
-    if (!nodeIds || nodeIds.length === 0) return;
-    appState.edges = [];
+export async function loadEdgesForNodeIds(nodeIds, label) {
+    if (!nodeIds || nodeIds.length === 0) { console.log('[' + label + '] empty nodeIds'); return; }
+    console.log('[' + label + '] querying ' + nodeIds.length + ' nodeIds:', nodeIds.slice(0, 3) + (nodeIds.length > 3 ? '...' : ''));
+    var existingIds = new Set(appState.edges.map(function(e) { return e.id; }));
+    console.log('[' + label + '] existing edges before: ' + existingIds.size);
     for (var i = 0; i < nodeIds.length; i += 50) {
         var chunk = nodeIds.slice(i, i + 50);
         var ids = chunk.map(function(id) { return id; }).join(',');
         var res = await sb.from('edges').select('*').or('node1.in.(' + ids + '),node2.in.(' + ids + ')');
-        if (res.data) appState.edges = appState.edges.concat(res.data);
+        if (res.error) {
+            console.error('[' + label + '] Supabase error:', res.error);
+        }
+        if (res.data) {
+            console.log('[' + label + '] fetched ' + res.data.length + ' edges from Supabase');
+            res.data.forEach(function(e) {
+                if (!existingIds.has(e.id)) {
+                    appState.edges.push(e);
+                    existingIds.add(e.id);
+                }
+            });
+        } else {
+            console.log('[' + label + '] no data returned');
+        }
     }
-    var seen = {};
-    appState.edges = appState.edges.filter(function(e) { if (seen[e.id]) return false; seen[e.id] = true; return true; });
+    console.log('[' + label + '] appState.edges now: ' + appState.edges.length);
 }
 
 export async function getOrCreateNode(name) {

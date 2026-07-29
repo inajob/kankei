@@ -24,14 +24,12 @@ export function initGraphCanvas() {
     var connected = getConnectedNodes(appState.focusedNodeId);
     var nodes = [{ id: centerNode.id, name: centerNode.name, x: width / 2, y: height / 2, vx: 0, vy: 0, isCenter: true, radius: 28, depth: 0 }];
     var nodeIds = new Set([centerNode.id]);
-    var localEdges = [];
     var angleStep = (2 * Math.PI) / (connected.length || 1);
     var radiusDist = Math.min(width, height) * 0.32;
     connected.forEach(function(node, i) {
         var angle = i * angleStep;
         nodes.push({ id: node.id, name: node.name, x: width / 2 + Math.cos(angle) * radiusDist, y: height / 2 + Math.sin(angle) * radiusDist, vx: 0, vy: 0, isCenter: false, radius: 20, depth: 1 });
         nodeIds.add(node.id);
-        localEdges.push({ from: centerNode.id, to: node.id });
     });
     connected.forEach(function(node) {
         var secondHop = getConnectedNodes(node.id);
@@ -41,8 +39,12 @@ export function initGraphCanvas() {
             var r2 = radiusDist * 1.5;
             nodes.push({ id: n2.id, name: n2.name, x: width / 2 + Math.cos(angle) * r2, y: height / 2 + Math.sin(angle) * r2, vx: 0, vy: 0, isCenter: false, radius: 14, depth: 2, parentId: node.id });
             nodeIds.add(n2.id);
-            localEdges.push({ from: node.id, to: n2.id });
         });
+    });
+    var localEdges = appState.edges.filter(function(e) {
+        return nodeIds.has(e.node1) && nodeIds.has(e.node2);
+    }).map(function(e) {
+        return { from: e.node1, to: e.node2 };
     });
     var localDraggedNode = null;
     var localAnimId = null;
@@ -101,18 +103,16 @@ export function initGraphCanvas() {
                 if (node !== localDraggedNode) { node.x += node.vx; node.y += node.vy; }
             });
         }
-        ctx.lineWidth = 2;
-        nodes.forEach(function(node, i) {
-            if (i === 0 || node.depth === 2) return;
-            ctx.strokeStyle = '#475569';
-            ctx.beginPath(); ctx.moveTo(center.x, center.y); ctx.lineTo(node.x, node.y); ctx.stroke();
-        });
-        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
-        nodes.forEach(function(node) {
-            if (node.depth !== 2 || !node.parentId) return;
-            var parent = nodes.find(function(n) { return n.id === node.parentId; });
-            if (!parent) return;
-            ctx.beginPath(); ctx.moveTo(parent.x, parent.y); ctx.lineTo(node.x, node.y); ctx.stroke();
+        localEdges.forEach(function(edge) {
+            var fromNode = nodes.find(function(n) { return n.id === edge.from; });
+            var toNode = nodes.find(function(n) { return n.id === edge.to; });
+            if (!fromNode || !toNode) return;
+            if (fromNode.id === centerNode.id || toNode.id === centerNode.id) {
+                ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+            } else {
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+            }
+            ctx.beginPath(); ctx.moveTo(fromNode.x, fromNode.y); ctx.lineTo(toNode.x, toNode.y); ctx.stroke();
         });
         nodes.forEach(function(node) {
             ctx.beginPath(); ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
