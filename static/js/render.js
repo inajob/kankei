@@ -62,6 +62,9 @@ export async function renderAll() {
 function renderOverview(isolatedIds) {
     var allNodes = Object.values(appState.nodes);
 
+    var countEl = document.getElementById('overviewNodeCount');
+    if (countEl) countEl.textContent = allNodes.length;
+
     var listEl = document.getElementById('overviewNodeList');
     listEl.innerHTML = '';
     allNodes.sort(function(a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });

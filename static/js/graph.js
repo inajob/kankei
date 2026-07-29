@@ -4,6 +4,7 @@ import { getConnectedNodes } from './utils.js';
 import { setFocusedNode } from './utils.js';
 import { setAnimationFrameId, setDraggedNode } from './state.js';
 import { animationFrameId, draggedNode } from './state.js';
+import { findCliques } from './clique.js';
 
 export function initGraphCanvas() {
     var canvas = document.getElementById('networkCanvas');
@@ -43,6 +44,49 @@ export function initGraphCanvas() {
     }).map(function(e) {
         return { from: e.node1, to: e.node2 };
     });
+
+    // Collapse cliques (size >= 3) into super-nodes
+    var cliqueIds = [];
+    var nodeToClique = {};
+    if (nodeIds.size >= 3) {
+        var visibleIds = Array.from(nodeIds).filter(function(id) { return id !== centerNode.id; });
+        var cliques = findCliques(appState.edges, visibleIds, 3);
+        cliques.forEach(function(clique, idx) {
+            clique.forEach(function(id) { nodeToClique[id] = idx; });
+        });
+        cliqueIds = cliques;
+        cliques.forEach(function(clique, idx) {
+            var memberNames = clique.map(function(id) { return appState.nodes[id] ? appState.nodes[id].name : '?'; }).join(', ');
+            var memberPositions = nodes.filter(function(n) { return clique.indexOf(n.id) !== -1; });
+            var avgX = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.x; }, 0) / memberPositions.length : width / 2;
+            var avgY = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.y; }, 0) / memberPositions.length : height / 2;
+            var avgDepth = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.depth; }, 0) / memberPositions.length : 1;
+            nodes.push({
+                id: '__clique_' + idx,
+                name: memberNames,
+                x: avgX,
+                y: avgY,
+                vx: 0, vy: 0,
+                isCenter: false,
+                isClique: true,
+                radius: Math.min(36, Math.max(22, 14 + clique.length * 4)),
+                depth: Math.round(avgDepth),
+                memberIds: clique.slice()
+            });
+        });
+        // Remove original nodes that were collapsed into cliques
+        nodes = nodes.filter(function(n) { return nodeToClique[n.id] === undefined; });
+        // Rewire edges: replace member IDs with super-node IDs
+        localEdges = localEdges.map(function(e) {
+            return {
+                from: nodeToClique[e.from] !== undefined ? '__clique_' + nodeToClique[e.from] : e.from,
+                to: nodeToClique[e.to] !== undefined ? '__clique_' + nodeToClique[e.to] : e.to
+            };
+        }).filter(function(e) {
+            return e.from !== e.to;
+        });
+    }
+
     var localDraggedNode = null;
     var localAnimId = null;
     var isDragging = false;
@@ -62,13 +106,15 @@ export function initGraphCanvas() {
     };
     canvas.onmouseup = function(e) {
         if (localDraggedNode && isDragging) {
-            if (localDraggedNode.id !== appState.focusedNodeId) {
+            if (localDraggedNode.isClique && localDraggedNode.memberIds && localDraggedNode.memberIds.length > 0) {
+                setFocusedNode(localDraggedNode.memberIds[0], true);
+            } else if (localDraggedNode.id !== appState.focusedNodeId) {
                 if (localDraggedNode.depth === 2 && localDraggedNode.parentId && appState.nodes[localDraggedNode.parentId]) {
                     setFocusedNode(localDraggedNode.parentId, true);
                 }
                 setFocusedNode(localDraggedNode.id, true);
-                window._renderAll && window._renderAll();
             }
+            window._renderAll && window._renderAll();
         }
         localDraggedNode = null;
         isDragging = false;
@@ -104,7 +150,7 @@ export function initGraphCanvas() {
             var fromNode = nodes.find(function(n) { return n.id === edge.from; });
             var toNode = nodes.find(function(n) { return n.id === edge.to; });
             if (!fromNode || !toNode) return;
-            if (fromNode.id === centerNode.id || toNode.id === centerNode.id) {
+            if (fromNode.id === centerNode.id || toNode.id === centerNode.id || fromNode.isCenter || toNode.isCenter) {
                 ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
             } else {
                 ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
@@ -116,6 +162,9 @@ export function initGraphCanvas() {
             if (node.isCenter) {
                 ctx.fillStyle = '#16a34a'; ctx.fill();
                 ctx.strokeStyle = '#bbf7d0'; ctx.lineWidth = 3;
+            } else if (node.isClique) {
+                ctx.fillStyle = '#7c3aed'; ctx.fill();
+                ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 2.5;
             } else if (node.depth === 2) {
                 ctx.fillStyle = '#475569'; ctx.fill();
                 ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1.5;
@@ -125,9 +174,18 @@ export function initGraphCanvas() {
             }
             ctx.stroke();
             ctx.fillStyle = '#ffffff';
-            ctx.font = node.isCenter ? 'bold 12px sans-serif' : node.depth === 2 ? '10px sans-serif' : '11px sans-serif';
+            if (node.isClique) {
+                ctx.font = '10px sans-serif';
+            } else {
+                ctx.font = node.isCenter ? 'bold 12px sans-serif' : node.depth === 2 ? '10px sans-serif' : '11px sans-serif';
+            }
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            var label = node.name; if (label.length > 6) label = label.substring(0, 5) + '..';
+            var label = node.name;
+            if (node.isClique) {
+                if (label.length > 18) label = label.substring(0, 17) + '..';
+            } else if (label.length > 6) {
+                label = label.substring(0, 5) + '..';
+            }
             ctx.fillText(label, node.x, node.y);
         });
         if (!settled) {

@@ -17,10 +17,13 @@ async function paginateFetch(table) {
     return allItems;
 }
 
+var loadedEdgeNodeIds = new Set();
+
 export async function loadAllData() {
     var allNodes = await paginateFetch('nodes');
     appState.nodes = {};
     allNodes.forEach(function(n) { appState.nodes[n.id] = n; });
+    loadedEdgeNodeIds.clear();
 }
 
 export async function fetchAllNodes() {
@@ -38,11 +41,12 @@ export async function loadIsolatedNodeIds() {
 
 export async function loadEdgesForNodeIds(nodeIds, label) {
     if (!nodeIds || nodeIds.length === 0) { console.log('[' + label + '] empty nodeIds'); return; }
-    console.log('[' + label + '] querying ' + nodeIds.length + ' nodeIds:', nodeIds.slice(0, 3) + (nodeIds.length > 3 ? '...' : ''));
+    var unseenIds = nodeIds.filter(function(id) { return !loadedEdgeNodeIds.has(id); });
+    if (unseenIds.length === 0) { console.log('[' + label + '] all ' + nodeIds.length + ' nodeIds already cached, skip'); return; }
+    console.log('[' + label + '] querying ' + unseenIds.length + '/' + nodeIds.length + ' nodeIds:', unseenIds.slice(0, 3) + (unseenIds.length > 3 ? '...' : ''));
     var existingIds = new Set(appState.edges.map(function(e) { return e.id; }));
-    console.log('[' + label + '] existing edges before: ' + existingIds.size);
-    for (var i = 0; i < nodeIds.length; i += 50) {
-        var chunk = nodeIds.slice(i, i + 50);
+    for (var i = 0; i < unseenIds.length; i += 50) {
+        var chunk = unseenIds.slice(i, i + 50);
         var ids = chunk.map(function(id) { return id; }).join(',');
         var res = await sb.from('edges').select('*').or('node1.in.(' + ids + '),node2.in.(' + ids + ')');
         if (res.error) {
@@ -60,6 +64,7 @@ export async function loadEdgesForNodeIds(nodeIds, label) {
             console.log('[' + label + '] no data returned');
         }
     }
+    unseenIds.forEach(function(id) { loadedEdgeNodeIds.add(id); });
     console.log('[' + label + '] appState.edges now: ' + appState.edges.length);
 }
 
