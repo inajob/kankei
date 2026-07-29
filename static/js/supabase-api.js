@@ -19,6 +19,11 @@ async function paginateFetch(table) {
 
 var loadedEdgeNodeIds = new Set();
 
+export function clearEdgeCache() {
+    loadedEdgeNodeIds.clear();
+    appState.edges = [];
+}
+
 export async function loadAllData() {
     var allNodes = await paginateFetch('nodes');
     appState.nodes = {};
@@ -39,33 +44,35 @@ export async function loadIsolatedNodeIds() {
     return new Set(res.data || []);
 }
 
-export async function loadEdgesForNodeIds(nodeIds, label) {
-    if (!nodeIds || nodeIds.length === 0) { console.log('[' + label + '] empty nodeIds'); return; }
+export async function loadEdgesForNodeIds(nodeIds, label, knownIds) {
+    if (!nodeIds || nodeIds.length === 0) return;
     var unseenIds = nodeIds.filter(function(id) { return !loadedEdgeNodeIds.has(id); });
-    if (unseenIds.length === 0) { console.log('[' + label + '] all ' + nodeIds.length + ' nodeIds already cached, skip'); return; }
-    console.log('[' + label + '] querying ' + unseenIds.length + '/' + nodeIds.length + ' nodeIds:', unseenIds.slice(0, 3) + (unseenIds.length > 3 ? '...' : ''));
+    if (unseenIds.length === 0) return;
     var existingIds = new Set(appState.edges.map(function(e) { return e.id; }));
-    for (var i = 0; i < unseenIds.length; i += 50) {
+    for (var i = 0; i < unseenIds.length; i += 200) {
         var chunk = unseenIds.slice(i, i + 50);
         var ids = chunk.map(function(id) { return id; }).join(',');
-        var res = await sb.from('edges').select('*').or('node1.in.(' + ids + '),node2.in.(' + ids + ')');
+        var filter;
+        if (knownIds && knownIds.length > 0) {
+            var knownStr = knownIds.join(',');
+            filter = 'and(node1.in.(' + ids + '),node2.in.(' + knownStr + ')),and(node2.in.(' + ids + '),node1.in.(' + knownStr + '))';
+        } else {
+            filter = 'node1.in.(' + ids + '),node2.in.(' + ids + ')';
+        }
+        var res = await sb.from('edges').select('*').or(filter);
         if (res.error) {
             console.error('[' + label + '] Supabase error:', res.error);
         }
         if (res.data) {
-            console.log('[' + label + '] fetched ' + res.data.length + ' edges from Supabase');
             res.data.forEach(function(e) {
                 if (!existingIds.has(e.id)) {
                     appState.edges.push(e);
                     existingIds.add(e.id);
                 }
             });
-        } else {
-            console.log('[' + label + '] no data returned');
         }
     }
     unseenIds.forEach(function(id) { loadedEdgeNodeIds.add(id); });
-    console.log('[' + label + '] appState.edges now: ' + appState.edges.length);
 }
 
 export async function getOrCreateNode(name) {

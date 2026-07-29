@@ -3,7 +3,7 @@ import { setAnimationFrameId } from './state.js';
 import { getConnectedNodes, isNodeIsolated, escapeHtml, setFocusedNode } from './utils.js';
 import { getUserName } from './auth.js';
 import { showToast } from './toast.js';
-import { loadEdgesForNodeIds, loadIsolatedNodeIds } from './supabase-api.js';
+import { loadEdgesForNodeIds, loadIsolatedNodeIds, clearEdgeCache } from './supabase-api.js';
 
 export async function renderAll() {
     var overviewSection = document.getElementById('overviewSection');
@@ -26,10 +26,12 @@ export async function renderAll() {
     if (showOverview) {
         renderOverview(isolatedIds);
     } else {
-        console.log('[renderAll] focusedNodeId:', appState.focusedNodeId);
+        clearEdgeCache();
         await loadEdgesForNodeIds([appState.focusedNodeId], 'hop0');
+        renderFocusedConcept();
+        renderBreadcrumbs();
+        renderConnectedList();
         var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
-        console.log('[renderAll] hop1Ids:', hop1Ids.length, hop1Ids.slice(0, 3));
         await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
         var knownIds = new Set([appState.focusedNodeId].concat(hop1Ids));
         var hop2Ids = appState.edges.filter(function(e) {
@@ -39,11 +41,9 @@ export async function renderAll() {
             return hop1Ids.includes(e.node1) ? e.node2 : e.node1;
         });
         hop2Ids = [...new Set(hop2Ids)];
-        console.log('[renderAll] hop2Ids:', hop2Ids.length, hop2Ids.slice(0, 3));
-        await loadEdgesForNodeIds(hop2Ids, 'hop2');
-        renderFocusedConcept();
-        renderBreadcrumbs();
-        renderConnectedList();
+        var allVisibleIds = [appState.focusedNodeId].concat(hop1Ids).concat(hop2Ids);
+        await loadEdgesForNodeIds(hop2Ids, 'hop2', allVisibleIds);
+        renderConnectedList2Hop(hop1Ids, hop2Ids);
         var listViewContainer = document.getElementById('listViewContainer');
         var graphViewContainer = document.getElementById('graphViewContainer');
         if (appState.viewMode === 'graph') {
@@ -125,9 +125,7 @@ function renderFocusedConcept() {
     }
     var currentNode = appState.nodes[appState.focusedNodeId];
     titleEl.innerText = currentNode.name;
-    console.log('[renderFocusedConcept] node:', currentNode.name, 'edges in appState:', appState.edges.length);
     var isolated = isNodeIsolated(currentNode.id);
-    console.log('[renderFocusedConcept] isNodeIsolated:', isolated);
     isolatedBadge.classList.toggle('hidden', !isolated);
     if (currentNode.created_by) {
         getUserName(currentNode.created_by).then(function(name) {
@@ -191,14 +189,14 @@ function renderConnectedList() {
     }
     connected.forEach(function(node) {
         var chip = document.createElement('div');
-        chip.className = 'group inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-green-50 text-slate-700 hover:text-green-700 rounded-lg text-sm font-medium cursor-pointer transition';
+        chip.className = 'group inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50/70 hover:bg-green-100 text-slate-700 hover:text-green-700 rounded-lg text-sm font-medium cursor-pointer transition border border-green-200/60';
         chip.onclick = function(e) {
             if (e.target.closest('.remove-edge-btn')) return;
             setFocusedNode(node.id, true);
             renderAll();
         };
-        var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-300 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除"><i class="fa-solid fa-xmark"></i></button>' : '';
-        chip.innerHTML = '<span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
+        var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除"><i class="fa-solid fa-xmark"></i></button>' : '';
+        chip.innerHTML = '<i class="fa-solid fa-link text-green-400 text-[10px]"></i><span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
         var removeBtn = chip.querySelector('.remove-edge-btn');
         if (removeBtn) {
             removeBtn.onclick = function(e) {
@@ -209,6 +207,44 @@ function renderConnectedList() {
                 });
             };
         }
+        listEl.appendChild(chip);
+    });
+}
+
+function renderConnectedList2Hop(hop1Ids, hop2Ids) {
+    var sectionEl = document.getElementById('hop2Section');
+    var listEl = document.getElementById('hop2List');
+    var countEl = document.getElementById('hop2Count');
+    listEl.innerHTML = '';
+    countEl.innerText = '0';
+    if (sectionEl) sectionEl.classList.add('hidden');
+    if (!appState.focusedNodeId || !hop1Ids || hop1Ids.length === 0 || !hop2Ids || hop2Ids.length === 0) {
+        return;
+    }
+    var hop2Set = new Set(hop2Ids);
+    var excludedIds = new Set([appState.focusedNodeId].concat(hop1Ids));
+    var seen = new Set();
+    var hop2Entries = [];
+    hop1Ids.forEach(function(pid) {
+        var parentNode = appState.nodes[pid];
+        if (!parentNode) return;
+        getConnectedNodes(pid).forEach(function(n) {
+            if (excludedIds.has(n.id) || seen.has(n.id) || !hop2Set.has(n.id)) return;
+            seen.add(n.id);
+            hop2Entries.push({ id: n.id, name: n.name, parentId: pid, parentName: parentNode.name });
+        });
+    });
+    countEl.innerText = hop2Entries.length;
+    if (hop2Entries.length === 0) return;
+    if (sectionEl) sectionEl.classList.remove('hidden');
+    hop2Entries.forEach(function(entry) {
+        var chip = document.createElement('div');
+        chip.className = 'group inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50/60 hover:bg-amber-100 text-slate-600 hover:text-amber-700 rounded-lg text-xs cursor-pointer transition border border-amber-200/50';
+        chip.onclick = function() {
+            setFocusedNode(entry.id, true);
+            renderAll();
+        };
+        chip.innerHTML = '<span>' + escapeHtml(entry.name) + '</span><span class="text-[10px] text-slate-400"> (' + escapeHtml(entry.parentName) + ')</span>';
         listEl.appendChild(chip);
     });
 }
