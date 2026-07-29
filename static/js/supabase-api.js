@@ -3,47 +3,32 @@ import { appState } from './state.js';
 import { generateId, findNodeByName } from './utils.js';
 import { currentUser } from './state.js';
 
-export async function loadAllData() {
+async function paginateFetch(table) {
     var pageSize = 1000;
     var from = 0;
-    var allNodes = [];
+    var allItems = [];
     while (true) {
-        var res = await sb.from('nodes').select('*').order('id').range(from, from + pageSize - 1);
+        var res = await sb.from(table).select('*').order('id').range(from, from + pageSize - 1);
         if (res.error || !res.data || res.data.length === 0) break;
-        allNodes = allNodes.concat(res.data);
+        allItems = allItems.concat(res.data);
         if (res.data.length < pageSize) break;
         from += pageSize;
     }
+    return allItems;
+}
+
+export async function loadAllData() {
+    var allNodes = await paginateFetch('nodes');
     appState.nodes = {};
     allNodes.forEach(function(n) { appState.nodes[n.id] = n; });
 }
 
 export async function fetchAllNodes() {
-    var pageSize = 1000;
-    var from = 0;
-    var allNodes = [];
-    while (true) {
-        var res = await sb.from('nodes').select('*').order('id').range(from, from + pageSize - 1);
-        if (res.error || !res.data || res.data.length === 0) break;
-        allNodes = allNodes.concat(res.data);
-        if (res.data.length < pageSize) break;
-        from += pageSize;
-    }
-    return allNodes;
+    return await paginateFetch('nodes');
 }
 
 export async function fetchAllEdges() {
-    var pageSize = 1000;
-    var from = 0;
-    var allEdges = [];
-    while (true) {
-        var res = await sb.from('edges').select('*').order('id').range(from, from + pageSize - 1);
-        if (res.error || !res.data || res.data.length === 0) break;
-        allEdges = allEdges.concat(res.data);
-        if (res.data.length < pageSize) break;
-        from += pageSize;
-    }
-    return allEdges;
+    return await paginateFetch('edges');
 }
 
 export async function loadIsolatedNodeIds() {

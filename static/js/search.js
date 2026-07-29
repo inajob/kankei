@@ -1,7 +1,7 @@
 import { appState, currentUser, activeGlobalSearchIndex, activeConnectSearchIndex } from './state.js';
 import { setActiveGlobalSearchIndex, setActiveConnectSearchIndex } from './state.js';
 import { getOrCreateNode, createEdgeInternal } from './supabase-api.js';
-import { highlightMatch, hideDropdown, highlightAutocompleteItem } from './utils.js';
+import { highlightMatch, escapeHtml, hideDropdown, highlightAutocompleteItem } from './utils.js';
 import { setFocusedNode } from './utils.js';
 import { fetchWikiSuggestions } from './wiki.js';
 import { showToast } from './toast.js';
@@ -49,12 +49,6 @@ function renderWikiSection(container, query, type) {
             };
             section.appendChild(el);
         });
-    });
-}
-
-function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
     });
 }
 

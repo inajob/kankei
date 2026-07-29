@@ -11,7 +11,9 @@ export async function getUserName(userId) {
         if (res.data) {
             name = res.data.username || res.data.display_name || '不明';
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('[getUserName] error fetching profile for', userId, e);
+    }
     setUserCacheEntry(userId, name);
     return name;
 }
@@ -60,7 +62,10 @@ export async function onLoggedIn(loadDataAndRender, subscribeRealtimeFn) {
                 document.getElementById('userName').textContent = usernameDisplay;
                 if (desktopName) desktopName.textContent = usernameDisplay;
             }
-        } catch (e) { setCurrentUserRole('user'); }
+        } catch (e) {
+            console.error('[onLoggedIn] error fetching profile', e);
+            setCurrentUserRole('user');
+        }
         var roleBadge = document.getElementById('userRoleBadge');
         var desktopRoleBadge = document.getElementById('desktopUserRoleBadge');
         if (currentUserRole === 'admin') {
@@ -92,7 +97,9 @@ export function setupUsernameHandlers() {
                 if (res.data && res.data.username) {
                     input.value = res.data.username;
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error('[openUsernameModal] error fetching current username', e);
+            }
         }
     }
     document.getElementById('editUsernameBtn').onclick = openUsernameModal;

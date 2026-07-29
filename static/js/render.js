@@ -1,6 +1,6 @@
 import { appState, currentUser, currentUserRole, animationFrameId } from './state.js';
 import { setAnimationFrameId } from './state.js';
-import { isNodeIsolated, escapeHtml, setFocusedNode } from './utils.js';
+import { getConnectedNodes, isNodeIsolated, escapeHtml, setFocusedNode } from './utils.js';
 import { getUserName } from './auth.js';
 import { showToast } from './toast.js';
 import { loadEdgesForNodeIds, loadIsolatedNodeIds } from './supabase-api.js';
@@ -180,7 +180,7 @@ function renderConnectedList() {
     var countEl = document.getElementById('connectedCount');
     listEl.innerHTML = '';
     if (!appState.focusedNodeId) return;
-    var connected = getConnectedNodesForRender(appState.focusedNodeId);
+    var connected = getConnectedNodes(appState.focusedNodeId);
     countEl.innerText = connected.length;
     if (connected.length === 0) {
         listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-link-slash text-slate-300 text-xl mb-1 block"></i>繋がっている概念はありません</div>';
@@ -236,15 +236,4 @@ function renderDrawerAllNodes(isolatedIds) {
     });
 }
 
-function getConnectedNodesForRender(nodeId) {
-    if (!nodeId) return [];
-    var connectedIds = new Set();
-    appState.edges.forEach(function(e) {
-        if (e.node1 === nodeId) connectedIds.add(e.node2);
-        if (e.node2 === nodeId) connectedIds.add(e.node1);
-    });
-    return Array.from(connectedIds)
-        .map(function(id) { return appState.nodes[id]; })
-        .filter(Boolean)
-        .sort(function(a, b) { return a.name.localeCompare(b.name, 'ja'); });
-}
+
