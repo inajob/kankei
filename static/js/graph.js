@@ -46,7 +46,6 @@ export function initGraphCanvas() {
     });
 
     // Collapse cliques (size >= 3) into super-nodes
-    var cliqueIds = [];
     var nodeToClique = {};
     if (nodeIds.size >= 3) {
         var visibleIds = Array.from(nodeIds).filter(function(id) { return id !== centerNode.id; });
@@ -54,28 +53,52 @@ export function initGraphCanvas() {
         cliques.forEach(function(clique, idx) {
             clique.forEach(function(id) { nodeToClique[id] = idx; });
         });
-        cliqueIds = cliques;
-        cliques.forEach(function(clique, idx) {
+        var extendedIds = new Set();
+        var superNodes = cliques.map(function(clique, idx) {
             var memberNames = clique.map(function(id) { return appState.nodes[id] ? appState.nodes[id].name : '?'; }).join(', ');
             var memberPositions = nodes.filter(function(n) { return clique.indexOf(n.id) !== -1; });
             var avgX = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.x; }, 0) / memberPositions.length : width / 2;
             var avgY = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.y; }, 0) / memberPositions.length : height / 2;
             var avgDepth = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.depth; }, 0) / memberPositions.length : 1;
-            nodes.push({
+            return {
                 id: '__clique_' + idx,
                 name: memberNames,
-                x: avgX,
-                y: avgY,
+                x: avgX, y: avgY,
                 vx: 0, vy: 0,
                 isCenter: false,
                 isClique: true,
                 radius: Math.min(36, Math.max(22, 14 + clique.length * 4)),
                 depth: Math.round(avgDepth),
                 memberIds: clique.slice()
+            };
+        });
+        // Find extended connections: 1-hop neighbors of clique members not in nodeIds
+        var extendedConns = [];
+        cliques.forEach(function(clique, idx) {
+            var sn = superNodes[idx];
+            clique.forEach(function(memberId) {
+                getConnectedNodes(memberId).forEach(function(n) {
+                    if (nodeIds.has(n.id) || extendedIds.has(n.id)) return;
+                    extendedIds.add(n.id);
+                    var angle = Math.atan2(sn.y - height / 2, sn.x - width / 2) + (Math.random() - 0.5) * 1.0;
+                    var r = sn.radius + 35;
+                    extendedConns.push({
+                        id: n.id, name: n.name,
+                        x: sn.x + Math.cos(angle) * r,
+                        y: sn.y + Math.sin(angle) * r,
+                        vx: 0, vy: 0,
+                        isCenter: false, isClique: false,
+                        radius: 11, depth: 3,
+                        parentId: sn.id
+                    });
+                    localEdges.push({ from: n.id, to: sn.id });
+                });
             });
         });
         // Remove original nodes that were collapsed into cliques
         nodes = nodes.filter(function(n) { return nodeToClique[n.id] === undefined; });
+        // Add super-nodes and extended connections
+        nodes = nodes.concat(superNodes).concat(extendedConns);
         // Rewire edges: replace member IDs with super-node IDs
         localEdges = localEdges.map(function(e) {
             return {
