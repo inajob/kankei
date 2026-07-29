@@ -201,6 +201,8 @@ function renderConnectedList() {
         if (removeBtn) {
             removeBtn.onclick = function(e) {
                 e.stopPropagation();
+                var nodeName = appState.nodes[node.id] ? appState.nodes[node.id].name : node.id;
+                if (!confirm('「' + nodeName + '」との接続を解除しますか？')) return;
                 window._removeEdge && window._removeEdge(appState.focusedNodeId, node.id).then(function(result) {
                     if (result && result.error) { showToast(result.error, 'error'); return; }
                     renderAll();
