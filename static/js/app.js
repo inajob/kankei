@@ -1,21 +1,12 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { sb } from './shared-supabase.js';
 import { appState, currentUser, setCurrentUser, currentUserRole, resetAppState } from './state.js';
 import { checkSession, onLoggedIn } from './auth.js';
-import { subscribeRealtime, setSupabaseClient as setRealtimeClient } from './realtime.js';
-import { loadAllData, removeEdge, setSupabaseClient as setApiClient } from './supabase-api.js';
+import { subscribeRealtime } from './realtime.js';
+import { loadAllData, removeEdge } from './supabase-api.js';
 import { renderAll } from './render.js';
 import { setFocusedNode, closeDrawer, findNodeByName } from './utils.js';
-import { initGraphCanvas, setSupabaseClient as setGraphClient } from './graph.js';
-import { setupEventListeners, setSupabaseClient as setEventsClient } from './events.js';
-import { setSupabaseClient as setAuthClient } from './auth.js';
-
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-setRealtimeClient(sb);
-setApiClient(sb);
-setGraphClient(sb);
-setAuthClient(sb);
-setEventsClient(sb);
+import { initGraphCanvas } from './graph.js';
+import { setupEventListeners } from './events.js';
 
 window._renderAll = renderAll;
 window._getCurrentUserId = function() { return currentUser ? currentUser.id : null; };

@@ -1,12 +1,9 @@
+import { sb } from './shared-supabase.js';
 import { appState } from './state.js';
 import { getConnectedNodes } from './utils.js';
 import { setFocusedNode } from './utils.js';
 import { setAnimationFrameId, setDraggedNode } from './state.js';
 import { animationFrameId, draggedNode } from './state.js';
-
-let sb;
-
-export function setSupabaseClient(client) { sb = client; }
 
 export function initGraphCanvas() {
     var canvas = document.getElementById('networkCanvas');

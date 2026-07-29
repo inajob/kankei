@@ -1,10 +1,7 @@
+import { sb } from './shared-supabase.js';
 import { appState } from './state.js';
 import { showToast } from './toast.js';
 import { loadAllData } from './supabase-api.js';
-
-let sb;
-
-export function setSupabaseClient(client) { sb = client; }
 
 export function subscribeRealtime() {
     if (sb.getChannels().some(function(c) { return c.topic === 'realtime:db-changes'; })) return;

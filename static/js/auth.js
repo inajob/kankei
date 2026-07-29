@@ -1,9 +1,6 @@
+import { sb } from './shared-supabase.js';
 import { currentUser, currentUserRole, userCache } from './state.js';
 import { setCurrentUser, setCurrentUserRole, setUserCacheEntry } from './state.js';
-
-let sb;
-
-export function setSupabaseClient(client) { sb = client; }
 
 export async function getUserName(userId) {
     if (!userId) return '不明';

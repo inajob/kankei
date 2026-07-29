@@ -1,10 +1,7 @@
+import { sb } from './shared-supabase.js';
 import { appState } from './state.js';
 import { generateId, findNodeByName } from './utils.js';
 import { currentUser } from './state.js';
-
-let sb;
-
-export function setSupabaseClient(client) { sb = client; }
 
 export async function loadAllData() {
     var pageSize = 1000;
