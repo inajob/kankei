@@ -1,0 +1,27 @@
+{
+  "name": "kankei",
+  "version": "1.0.0",
+  "description": "概念の関係性を可視化し、思考を広げるためのネットワークアプリケーション。",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/css/input.css -o ./static/css/tailwind.css --minify",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inajob/kankei.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/inajob/kankei/issues"
+  },
+  "homepage": "https://github.com/inajob/kankei#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

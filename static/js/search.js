@@ -5,6 +5,7 @@ import { highlightMatch, escapeHtml, hideDropdown, highlightAutocompleteItem } f
 import { setFocusedNode } from './utils.js';
 import { fetchWikiSuggestions } from './wiki.js';
 import { showToast } from './toast.js';
+import { iconPlus, iconWikipedia } from './icons.js';
 
 function renderWikiSection(container, query, type) {
     var existing = container.querySelector('.wiki-section');
@@ -12,12 +13,12 @@ function renderWikiSection(container, query, type) {
 
     var section = document.createElement('div');
     section.className = 'wiki-section';
-    section.innerHTML = '<div class="wiki-header"><i class="fa-brands fa-wikipedia-w"></i> Wikipedia</div><div class="wiki-loading">検索中...</div>';
+    section.innerHTML = '<div class="wiki-header">' + iconWikipedia('mr-1') + ' Wikipedia</div><div class="wiki-loading">検索中...</div>';
     container.appendChild(section);
     container.classList.remove('hidden');
 
     fetchWikiSuggestions(query, function(results) {
-        section.innerHTML = '<div class="wiki-header"><i class="fa-brands fa-wikipedia-w"></i> Wikipedia</div>';
+        section.innerHTML = '<div class="wiki-header">' + iconWikipedia('mr-1') + ' Wikipedia</div>';
         if (!results || results.length === 0) {
             section.remove();
             return;
@@ -77,7 +78,7 @@ export function renderGlobalSearchDropdown(query) {
     if (currentUser) {
         var createOption = document.createElement('div');
         createOption.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs font-semibold text-green-600 bg-slate-50 flex items-center gap-1.5';
-        createOption.innerHTML = '<i class="fa-solid fa-plus text-[10px]"></i> 「' + query.replace(/</g, '&lt;') + '」を新規作成してジャンプ';
+        createOption.innerHTML = iconPlus() + ' 「' + query.replace(/</g, '&lt;') + '」を新規作成してジャンプ';
         createOption.onclick = function() {
             getOrCreateNode(query).then(function(node) {
                 if (node) {

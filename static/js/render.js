@@ -4,6 +4,8 @@ import { getConnectedNodes, isNodeIsolated, escapeHtml, setFocusedNode } from '.
 import { getUserName } from './auth.js';
 import { showToast } from './toast.js';
 import { loadEdgesForNodeIds, loadIsolatedNodeIds, clearEdgeCache } from './supabase-api.js';
+import { spinnerInline, spinnerHtml } from './spinner.js';
+import { iconNodes, iconCompass, iconChevronRight, iconLinkSlash, iconLink, iconXmark } from './icons.js';
 
 export async function renderAll() {
     if (Object.keys(appState.nodes).length === 0) return;
@@ -28,13 +30,13 @@ export async function renderAll() {
     if (!showOverview) {
         var connectedList = document.getElementById('connectedList');
         if (connectedList) {
-            connectedList.innerHTML = '<div class="flex items-center justify-center py-6 text-slate-400"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i><span class="text-xs">接続データを読み込み中...</span></div>';
+            connectedList.innerHTML = spinnerInline('接続データを読み込み中...');
         }
         var hop2Section = document.getElementById('hop2Section');
         if (hop2Section) hop2Section.classList.remove('hidden');
         var hop2List = document.getElementById('hop2List');
         if (hop2List) {
-            hop2List.innerHTML = '<div class="flex items-center justify-center py-4 text-slate-400 w-full"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i><span class="text-xs">読み込み中...</span></div>';
+            hop2List.innerHTML = '<div class="flex items-center justify-center py-4 text-slate-400 w-full">' + spinnerHtml('読み込み中...') + '</div>';
         }
         if (appState.viewMode === 'graph') {
             var graphLoading = document.getElementById('graphLoading');
@@ -51,12 +53,6 @@ export async function renderAll() {
         }
     }
 
-    // Show heading title immediately before async data fetching
-    if (!showOverview) {
-        renderFocusedConcept();
-        renderBreadcrumbs();
-    }
-
     try {
         var isolatedIds = await loadIsolatedNodeIds();
         if (showOverview) {
@@ -64,6 +60,8 @@ export async function renderAll() {
         } else {
             clearEdgeCache();
             await loadEdgesForNodeIds([appState.focusedNodeId], 'hop0');
+            renderFocusedConcept();
+            renderBreadcrumbs();
             renderConnectedList();
             var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
             await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
@@ -113,7 +111,7 @@ function renderOverview(isolatedIds) {
     allNodes.sort(function(a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
 
     if (allNodes.length === 0) {
-        listEl.innerHTML = '<div class="col-span-full text-center text-slate-400 text-xs py-8"><i class="fa-solid fa-circle-nodes text-slate-300 text-3xl mb-2 block"></i>まだ概念がありません</div>';
+        listEl.innerHTML = '<div class="col-span-full text-center text-slate-400 text-xs py-8">' + iconNodes('text-slate-300 text-3xl mb-2 block') + 'まだ概念がありません</div>';
         return;
     }
 
@@ -185,7 +183,7 @@ function renderBreadcrumbContent(navEl) {
     if (!navEl) return;
     navEl.innerHTML = '';
     if (appState.history.length === 0) {
-        navEl.innerHTML = '<span class="text-slate-400 italic"><i class="fa-solid fa-compass mr-1"></i> 思考の軌跡がここに表示されます</span>';
+        navEl.innerHTML = '<span class="text-slate-400 italic">' + iconCompass('mr-1') + ' 思考の軌跡がここに表示されます</span>';
         return;
     }
     appState.history.slice(-5).forEach(function(nodeId) {
@@ -203,7 +201,7 @@ function renderBreadcrumbContent(navEl) {
         navEl.appendChild(btn);
         var arrow = document.createElement('span');
         arrow.className = 'text-slate-300';
-        arrow.innerHTML = '<i class="fa-solid fa-chevron-right text-[10px]"></i>';
+        arrow.innerHTML = iconChevronRight('text-[10px]');
         navEl.appendChild(arrow);
     });
     if (appState.focusedNodeId && appState.nodes[appState.focusedNodeId]) {
@@ -227,7 +225,7 @@ function renderConnectedList() {
     var connected = getConnectedNodes(appState.focusedNodeId);
     countEl.innerText = connected.length;
     if (connected.length === 0) {
-        listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-link-slash text-slate-300 text-xl mb-1 block"></i>繋がっている概念はありません</div>';
+        listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 text-xs">' + iconLinkSlash('text-slate-300 text-xl mb-1 block') + '繋がっている概念はありません</div>';
         return;
     }
     connected.forEach(function(node) {
@@ -238,8 +236,8 @@ function renderConnectedList() {
             setFocusedNode(node.id, true);
             renderAll();
         };
-        var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除"><i class="fa-solid fa-xmark"></i></button>' : '';
-        chip.innerHTML = '<i class="fa-solid fa-link text-green-400 text-[10px]"></i><span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
+        var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除">' + iconXmark() + '</button>' : '';
+        chip.innerHTML = iconLink('text-green-400') + '<span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
         var removeBtn = chip.querySelector('.remove-edge-btn');
         if (removeBtn) {
             removeBtn.onclick = function(e) {
