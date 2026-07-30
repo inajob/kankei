@@ -16,17 +16,38 @@ window._removeEdge = removeEdge;
 window._enterGuestMode = enterGuestMode;
 
 async function loadDataAndRender() {
-    await loadAllData();
-    var hashName = decodeURIComponent(window.location.hash.substring(1));
-    if (hashName) {
-        var node = findNodeByName(hashName);
-        if (node) {
-            setFocusedNode(node.id, false);
+    try {
+        await loadAllData();
+        var hashName = decodeURIComponent(window.location.hash.substring(1));
+        if (hashName) {
+            var node = findNodeByName(hashName);
+            if (node) {
+                setFocusedNode(node.id, false);
+            }
         }
+        setupEventListeners();
+        renderAll();
+    } catch (e) {
+        console.error(e);
     }
-    setupEventListeners();
+}
+
+async function rehydrateOnVisible() {
+    if (!currentUser) return;
+    var nodeCount = Object.keys(appState.nodes).length;
+    if (nodeCount === 0) {
+        try { await loadAllData(); } catch (e) { console.error('rehydrate error:', e); }
+    }
     renderAll();
 }
+
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') rehydrateOnVisible();
+});
+
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) rehydrateOnVisible();
+});
 
 window.addEventListener('hashchange', function() {
     var hashName = decodeURIComponent(window.location.hash.substring(1));

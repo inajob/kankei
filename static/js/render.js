@@ -6,6 +6,8 @@ import { showToast } from './toast.js';
 import { loadEdgesForNodeIds, loadIsolatedNodeIds, clearEdgeCache } from './supabase-api.js';
 
 export async function renderAll() {
+    if (Object.keys(appState.nodes).length === 0) return;
+
     var overviewSection = document.getElementById('overviewSection');
     var focusSection = document.getElementById('focusSection');
     var breadcrumbNav = document.getElementById('breadcrumbNav');
@@ -22,45 +24,86 @@ export async function renderAll() {
     var desktopBreadcrumb = document.getElementById('desktopBreadcrumbNav');
     if (desktopBreadcrumb) desktopBreadcrumb.classList.toggle('hidden', showOverview);
 
-    var isolatedIds = await loadIsolatedNodeIds();
-    if (showOverview) {
-        renderOverview(isolatedIds);
-    } else {
-        clearEdgeCache();
-        await loadEdgesForNodeIds([appState.focusedNodeId], 'hop0');
-        renderFocusedConcept();
-        renderBreadcrumbs();
-        renderConnectedList();
-        var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
-        await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
-        var knownIds = new Set([appState.focusedNodeId].concat(hop1Ids));
-        var hop2Ids = appState.edges.filter(function(e) {
-            return (hop1Ids.includes(e.node1) && !knownIds.has(e.node2)) ||
-                   (hop1Ids.includes(e.node2) && !knownIds.has(e.node1));
-        }).map(function(e) {
-            return hop1Ids.includes(e.node1) ? e.node2 : e.node1;
-        });
-        hop2Ids = [...new Set(hop2Ids)];
-        var allVisibleIds = [appState.focusedNodeId].concat(hop1Ids).concat(hop2Ids);
-        await loadEdgesForNodeIds(hop2Ids, 'hop2', allVisibleIds);
-        renderConnectedList2Hop(hop1Ids, hop2Ids);
-        var listViewContainer = document.getElementById('listViewContainer');
-        var graphViewContainer = document.getElementById('graphViewContainer');
+    // Show inline loading indicator in the content area during async data fetching
+    if (!showOverview) {
+        var connectedList = document.getElementById('connectedList');
+        if (connectedList) {
+            connectedList.innerHTML = '<div class="flex items-center justify-center py-6 text-slate-400"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i><span class="text-xs">接続データを読み込み中...</span></div>';
+        }
+        var hop2Section = document.getElementById('hop2Section');
+        if (hop2Section) hop2Section.classList.remove('hidden');
+        var hop2List = document.getElementById('hop2List');
+        if (hop2List) {
+            hop2List.innerHTML = '<div class="flex items-center justify-center py-4 text-slate-400 w-full"><i class="fa-solid fa-circle-notch animate-spin mr-2"></i><span class="text-xs">読み込み中...</span></div>';
+        }
         if (appState.viewMode === 'graph') {
-            if (listViewContainer) listViewContainer.classList.add('hidden');
+            var graphLoading = document.getElementById('graphLoading');
+            if (graphLoading) graphLoading.classList.remove('hidden');
+            var graphViewContainer = document.getElementById('graphViewContainer');
             if (graphViewContainer) graphViewContainer.classList.remove('hidden');
-            window._initGraphCanvas && window._initGraphCanvas();
+            var listViewContainer = document.getElementById('listViewContainer');
+            if (listViewContainer) listViewContainer.classList.add('hidden');
         } else {
+            var listViewContainer = document.getElementById('listViewContainer');
             if (listViewContainer) listViewContainer.classList.remove('hidden');
+            var graphViewContainer = document.getElementById('graphViewContainer');
             if (graphViewContainer) graphViewContainer.classList.add('hidden');
         }
     }
-    renderDrawerAllNodes(isolatedIds);
-    renderGuestMode();
+
+    // Show heading title immediately before async data fetching
+    if (!showOverview) {
+        renderFocusedConcept();
+        renderBreadcrumbs();
+    }
+
+    try {
+        var isolatedIds = await loadIsolatedNodeIds();
+        if (showOverview) {
+            renderOverview(isolatedIds);
+        } else {
+            clearEdgeCache();
+            await loadEdgesForNodeIds([appState.focusedNodeId], 'hop0');
+            renderConnectedList();
+            var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
+            await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
+            var knownIds = new Set([appState.focusedNodeId].concat(hop1Ids));
+            var hop2Ids = appState.edges.filter(function(e) {
+                return (hop1Ids.includes(e.node1) && !knownIds.has(e.node2)) ||
+                       (hop1Ids.includes(e.node2) && !knownIds.has(e.node1));
+            }).map(function(e) {
+                return hop1Ids.includes(e.node1) ? e.node2 : e.node1;
+            });
+            hop2Ids = [...new Set(hop2Ids)];
+            var allVisibleIds = [appState.focusedNodeId].concat(hop1Ids).concat(hop2Ids);
+            await loadEdgesForNodeIds(hop2Ids, 'hop2', allVisibleIds);
+            renderConnectedList2Hop(hop1Ids, hop2Ids);
+            var listViewContainer = document.getElementById('listViewContainer');
+            var graphViewContainer = document.getElementById('graphViewContainer');
+            var graphLoading = document.getElementById('graphLoading');
+            if (appState.viewMode === 'graph') {
+                if (listViewContainer) listViewContainer.classList.add('hidden');
+                if (graphViewContainer) graphViewContainer.classList.remove('hidden');
+                if (graphLoading) graphLoading.classList.add('hidden');
+                window._initGraphCanvas && window._initGraphCanvas();
+            } else {
+                if (listViewContainer) listViewContainer.classList.remove('hidden');
+                if (graphViewContainer) graphViewContainer.classList.add('hidden');
+            }
+        }
+        renderDrawerAllNodes(isolatedIds);
+        renderGuestMode();
+    } catch (e) {
+        console.error('renderAll error:', e);
+    } finally {
+        var gl = document.getElementById('graphLoading');
+        if (gl) gl.classList.add('hidden');
+    }
 }
 
 function renderOverview(isolatedIds) {
     var allNodes = Object.values(appState.nodes);
+    if (!isolatedIds) isolatedIds = new Set();
 
     var countEl = document.getElementById('overviewNodeCount');
     if (countEl) countEl.textContent = allNodes.length;
