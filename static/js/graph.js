@@ -203,13 +203,7 @@ export function initGraphCanvas() {
                 ctx.font = node.isCenter ? 'bold 12px sans-serif' : node.depth === 2 ? '10px sans-serif' : '11px sans-serif';
             }
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            var label = node.name;
-            if (node.isClique) {
-                if (label.length > 18) label = label.substring(0, 17) + '..';
-            } else if (label.length > 6) {
-                label = label.substring(0, 5) + '..';
-            }
-            ctx.fillText(label, node.x, node.y);
+            ctx.fillText(node.name, node.x, node.y);
         });
         if (!settled) {
             localAnimId = requestAnimationFrame(animate);
