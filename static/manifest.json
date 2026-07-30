@@ -1,0 +1,12 @@
+{
+  "name": "kankei",
+  "short_name": "kankei",
+  "description": "関係するものをつなげていく",
+  "start_url": "/kankei/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#16a34a",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
