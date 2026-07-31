@@ -7,7 +7,9 @@ export let appState = {
     edges: [],
     focusedNodeId: null,
     history: [],
-    viewMode: 'list'
+    viewMode: 'list',
+    densityThreshold: 0.2,
+    inclusionThreshold: 0.35
 };
 
 export let activeGlobalSearchIndex = -1;

@@ -1,10 +1,52 @@
-import { sb } from './shared-supabase.js';
 import { appState } from './state.js';
 import { getConnectedNodes } from './utils.js';
 import { setFocusedNode } from './utils.js';
-import { setAnimationFrameId, setDraggedNode } from './state.js';
-import { animationFrameId, draggedNode } from './state.js';
-import { findCliques } from './clique.js';
+import { setAnimationFrameId } from './state.js';
+import { animationFrameId } from './state.js';
+import { computeLocalDensity, computeInclusionRelationships } from './local-density.js';
+
+function findDenseGroups(edges, nodes, nodeIds, threshold, minSize) {
+    if (threshold === undefined) threshold = 0.3;
+    if (minSize === undefined) minSize = 3;
+    var adj = {};
+    var degree = {};
+    nodeIds.forEach(function(id) {
+        adj[id] = [];
+        degree[id] = 0;
+    });
+    edges.forEach(function(e) {
+        if (!adj[e.node1] || !adj[e.node2]) return;
+        adj[e.node1].push(e.node2);
+        adj[e.node2].push(e.node1);
+        degree[e.node1]++;
+        degree[e.node2]++;
+    });
+    var visited = new Set();
+    var groups = [];
+    nodeIds.forEach(function(startId) {
+        if (visited.has(startId)) return;
+        var stack = [startId];
+        var cluster = new Set();
+        while (stack.length) {
+            var cur = stack.pop();
+            if (visited.has(cur)) continue;
+            visited.add(cur);
+            cluster.add(cur);
+            adj[cur].forEach(function(nid) {
+                if (!cluster.has(nid)) {
+                    var shared = 0;
+                    var setA = new Set(adj[cur] || []);
+                    (adj[nid] || []).forEach(function(v) { if (setA.has(v)) shared++; });
+                    var minDeg = Math.min(degree[cur], degree[nid]);
+                    var score = minDeg > 0 ? shared / minDeg : 0;
+                    if (score >= threshold) stack.push(nid);
+                }
+            });
+        }
+        if (cluster.size >= minSize) groups.push(Array.from(cluster));
+    });
+    return groups;
+}
 
 export function initGraphCanvas() {
     var canvas = document.getElementById('networkCanvas');
@@ -18,12 +60,29 @@ export function initGraphCanvas() {
     var height = container.clientHeight;
     if (!width || !height) return;
     if (!appState.focusedNodeId) return;
+
     var centerNode = appState.nodes[appState.focusedNodeId];
     var connected = getConnectedNodes(appState.focusedNodeId);
+    var radiusDist = Math.min(width, height) * 0.32;
+
+    // Classify neighbors by density, sort so local group occupies first contiguous arc
+    var groupResult = computeLocalDensity(appState.focusedNodeId, appState.edges, appState.nodes, appState.densityThreshold);
+    var localGroupIds = new Set(groupResult.localGroup.map(function(n) { return n.id; }));
+    var contextHubIds = new Set(groupResult.contextHubs.map(function(n) { return n.id; }));
+    var incResult = groupResult.localGroup.length >= 2
+        ? computeInclusionRelationships(groupResult.localGroup, appState.edges, appState.nodes, appState.inclusionThreshold)
+        : null;
+    var parentIds = new Set(incResult ? incResult.parents.map(function(n) { return n.id; }) : []);
+    var childIds = new Set(incResult ? incResult.children.map(function(n) { return n.id; }) : []);
+    connected.sort(function(a, b) {
+        var ai = localGroupIds.has(a.id) ? 0 : 1;
+        var bi = localGroupIds.has(b.id) ? 0 : 1;
+        return ai - bi;
+    });
+
     var nodes = [{ id: centerNode.id, name: centerNode.name, x: width / 2, y: height / 2, vx: 0, vy: 0, isCenter: true, radius: 28, depth: 0 }];
     var nodeIds = new Set([centerNode.id]);
     var angleStep = (2 * Math.PI) / (connected.length || 1);
-    var radiusDist = Math.min(width, height) * 0.32;
     connected.forEach(function(node, i) {
         var angle = i * angleStep;
         nodes.push({ id: node.id, name: node.name, x: width / 2 + Math.cos(angle) * radiusDist, y: height / 2 + Math.sin(angle) * radiusDist, vx: 0, vy: 0, isCenter: false, radius: 20, depth: 1 });
@@ -45,70 +104,46 @@ export function initGraphCanvas() {
         return { from: e.node1, to: e.node2 };
     });
 
-    // Collapse cliques (size >= 3) into super-nodes
-    var nodeToClique = {};
-    if (nodeIds.size >= 3) {
-        var visibleIds = Array.from(nodeIds).filter(function(id) { return id !== centerNode.id; });
-        var cliques = findCliques(appState.edges, visibleIds, 3);
-        cliques.forEach(function(clique, idx) {
-            clique.forEach(function(id) { nodeToClique[id] = idx; });
+    // Find dense groups among 1-hop + 2-hop nodes (excluding center)
+    var outerNodeIds = new Set(nodeIds);
+    outerNodeIds.delete(centerNode.id);
+    var visibleEdges = appState.edges.filter(function(e) {
+        return outerNodeIds.has(e.node1) && outerNodeIds.has(e.node2);
+    });
+    var denseGroups = findDenseGroups(visibleEdges, appState.nodes, Array.from(outerNodeIds), 0.3, 3);
+    var nodeToSuper = {};
+    var superNodes = [];
+    denseGroups.forEach(function(group, idx) {
+        group.forEach(function(id) { nodeToSuper[id] = idx; });
+        var memberPositions = nodes.filter(function(n) { return group.indexOf(n.id) !== -1; });
+        var avgX = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.x; }, 0) / memberPositions.length : width / 2;
+        var avgY = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.y; }, 0) / memberPositions.length : height / 2;
+        var memberNames = group.map(function(id) { return appState.nodes[id] ? appState.nodes[id].name : '?'; }).join(', ');
+        superNodes.push({
+            id: '__dense_' + idx,
+            name: memberNames,
+            x: avgX, y: avgY,
+            vx: 0, vy: 0,
+            isCenter: false,
+            isDenseGroup: true,
+            radius: Math.min(36, Math.max(22, 14 + group.length * 4)),
+            depth: 1,
+            memberIds: group.slice()
         });
-        var extendedIds = new Set();
-        var superNodes = cliques.map(function(clique, idx) {
-            var memberNames = clique.map(function(id) { return appState.nodes[id] ? appState.nodes[id].name : '?'; }).join(', ');
-            var memberPositions = nodes.filter(function(n) { return clique.indexOf(n.id) !== -1; });
-            var avgX = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.x; }, 0) / memberPositions.length : width / 2;
-            var avgY = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.y; }, 0) / memberPositions.length : height / 2;
-            var avgDepth = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.depth; }, 0) / memberPositions.length : 1;
-            return {
-                id: '__clique_' + idx,
-                name: memberNames,
-                x: avgX, y: avgY,
-                vx: 0, vy: 0,
-                isCenter: false,
-                isClique: true,
-                radius: Math.min(36, Math.max(22, 14 + clique.length * 4)),
-                depth: Math.round(avgDepth),
-                memberIds: clique.slice()
-            };
-        });
-        // Find extended connections: 1-hop neighbors of clique members not in nodeIds
-        var extendedConns = [];
-        cliques.forEach(function(clique, idx) {
-            var sn = superNodes[idx];
-            clique.forEach(function(memberId) {
-                getConnectedNodes(memberId).forEach(function(n) {
-                    if (nodeIds.has(n.id) || extendedIds.has(n.id)) return;
-                    extendedIds.add(n.id);
-                    var angle = Math.atan2(sn.y - height / 2, sn.x - width / 2) + (Math.random() - 0.5) * 1.0;
-                    var r = sn.radius + 35;
-                    extendedConns.push({
-                        id: n.id, name: n.name,
-                        x: sn.x + Math.cos(angle) * r,
-                        y: sn.y + Math.sin(angle) * r,
-                        vx: 0, vy: 0,
-                        isCenter: false, isClique: false,
-                        radius: 11, depth: 3,
-                        parentId: sn.id
-                    });
-                    localEdges.push({ from: n.id, to: sn.id });
-                });
-            });
-        });
-        // Remove original nodes that were collapsed into cliques
-        nodes = nodes.filter(function(n) { return nodeToClique[n.id] === undefined; });
-        // Add super-nodes and extended connections
-        nodes = nodes.concat(superNodes).concat(extendedConns);
-        // Rewire edges: replace member IDs with super-node IDs
-        localEdges = localEdges.map(function(e) {
-            return {
-                from: nodeToClique[e.from] !== undefined ? '__clique_' + nodeToClique[e.from] : e.from,
-                to: nodeToClique[e.to] !== undefined ? '__clique_' + nodeToClique[e.to] : e.to
-            };
-        }).filter(function(e) {
-            return e.from !== e.to;
-        });
-    }
+    });
+    // Remove original nodes that were collapsed into dense groups
+    nodes = nodes.filter(function(n) { return nodeToSuper[n.id] === undefined; });
+    // Add super-nodes
+    nodes = nodes.concat(superNodes);
+    // Rewire edges: replace member IDs with super-node IDs
+    localEdges = localEdges.map(function(e) {
+        return {
+            from: nodeToSuper[e.from] !== undefined ? '__dense_' + nodeToSuper[e.from] : e.from,
+            to: nodeToSuper[e.to] !== undefined ? '__dense_' + nodeToSuper[e.to] : e.to
+        };
+    }).filter(function(e) {
+        return e.from !== e.to;
+    });
 
     var localDraggedNode = null;
     var localAnimId = null;
@@ -129,9 +164,7 @@ export function initGraphCanvas() {
     };
     canvas.onmouseup = function(e) {
         if (localDraggedNode && isDragging) {
-            if (localDraggedNode.isClique && localDraggedNode.memberIds && localDraggedNode.memberIds.length > 0) {
-                setFocusedNode(localDraggedNode.memberIds[0], true);
-            } else if (localDraggedNode.id !== appState.focusedNodeId) {
+            if (localDraggedNode.id !== appState.focusedNodeId) {
                 if (localDraggedNode.depth === 2 && localDraggedNode.parentId && appState.nodes[localDraggedNode.parentId]) {
                     setFocusedNode(localDraggedNode.parentId, true);
                 }
@@ -185,9 +218,15 @@ export function initGraphCanvas() {
             if (node.isCenter) {
                 ctx.fillStyle = '#16a34a'; ctx.fill();
                 ctx.strokeStyle = '#bbf7d0'; ctx.lineWidth = 3;
-            } else if (node.isClique) {
-                ctx.fillStyle = '#7c3aed'; ctx.fill();
-                ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 2.5;
+            } else if (parentIds.has(node.id)) {
+                ctx.fillStyle = '#0284c7'; ctx.fill();
+                ctx.strokeStyle = '#bae6fd'; ctx.lineWidth = 2;
+            } else if (localGroupIds.has(node.id)) {
+                ctx.fillStyle = '#16a34a'; ctx.fill();
+                ctx.strokeStyle = '#bbf7d0'; ctx.lineWidth = 2;
+            } else if (contextHubIds.has(node.id)) {
+                ctx.fillStyle = '#d97706'; ctx.fill();
+                ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2;
             } else if (node.depth === 2) {
                 ctx.fillStyle = '#475569'; ctx.fill();
                 ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1.5;
@@ -197,11 +236,7 @@ export function initGraphCanvas() {
             }
             ctx.stroke();
             ctx.fillStyle = '#ffffff';
-            if (node.isClique) {
-                ctx.font = '10px sans-serif';
-            } else {
-                ctx.font = node.isCenter ? 'bold 12px sans-serif' : node.depth === 2 ? '10px sans-serif' : '11px sans-serif';
-            }
+            ctx.font = node.isCenter ? 'bold 12px sans-serif' : node.depth === 2 ? '10px sans-serif' : '11px sans-serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(node.name, node.x, node.y);
         });

@@ -15,8 +15,19 @@ window._closeDrawer = closeDrawer;
 window._removeEdge = removeEdge;
 window._enterGuestMode = enterGuestMode;
 
+function parseFloatParam(name, defaultVal) {
+    var m = window.location.search.match(new RegExp('[?&]' + name + '=([0-9.]+)'));
+    if (m) {
+        var val = parseFloat(m[1]);
+        if (!isNaN(val) && val >= 0 && val <= 1) return val;
+    }
+    return defaultVal;
+}
+
 async function loadDataAndRender() {
     try {
+        appState.densityThreshold = parseFloatParam('threshold', 0.2);
+        appState.inclusionThreshold = parseFloatParam('inclusionThreshold', 0.35);
         await loadAllData();
         var hashName = decodeURIComponent(window.location.hash.substring(1));
         if (hashName) {

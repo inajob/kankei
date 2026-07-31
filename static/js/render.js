@@ -6,6 +6,7 @@ import { showToast } from './toast.js';
 import { loadEdgesForNodeIds, loadIsolatedNodeIds, clearEdgeCache } from './supabase-api.js';
 import { spinnerInline, spinnerHtml } from './spinner.js';
 import { iconNodes, iconCompass, iconChevronRight, iconLinkSlash, iconLink, iconXmark } from './icons.js';
+import { computeLocalDensity, computeInclusionRelationships } from './local-density.js';
 
 export async function renderAll() {
     if (Object.keys(appState.nodes).length === 0) return;
@@ -60,11 +61,11 @@ export async function renderAll() {
         } else {
             clearEdgeCache();
             await loadEdgesForNodeIds([appState.focusedNodeId], 'hop0');
+            var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
+            await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
             renderFocusedConcept();
             renderBreadcrumbs();
             renderConnectedList();
-            var hop1Ids = appState.edges.map(function(e) { return e.node1 === appState.focusedNodeId ? e.node2 : e.node1; });
-            await loadEdgesForNodeIds(hop1Ids.concat([appState.focusedNodeId]), 'hop1');
             var knownIds = new Set([appState.focusedNodeId].concat(hop1Ids));
             var hop2Ids = appState.edges.filter(function(e) {
                 return (hop1Ids.includes(e.node1) && !knownIds.has(e.node2)) ||
@@ -219,39 +220,78 @@ function renderBreadcrumbs() {
 
 function renderConnectedList() {
     var listEl = document.getElementById('connectedList');
-    var countEl = document.getElementById('connectedCount');
+    var localCountEl = document.getElementById('localGroupCount');
+    var localSection = document.getElementById('localGroupSection');
+    var hubSection = document.getElementById('contextHubSection');
+    var hubListEl = document.getElementById('contextHubList');
+    var hubCountEl = document.getElementById('contextHubCount');
+    var upperSection = document.getElementById('upperContextSection');
+    var upperListEl = document.getElementById('upperContextList');
+    var upperCountEl = document.getElementById('upperContextCount');
     listEl.innerHTML = '';
+    hubListEl.innerHTML = '';
+    if (upperSection) upperSection.classList.add('hidden');
+    if (localSection) localSection.classList.add('hidden');
+    if (hubSection) hubSection.classList.add('hidden');
     if (!appState.focusedNodeId) return;
-    var connected = getConnectedNodes(appState.focusedNodeId);
-    countEl.innerText = connected.length;
-    if (connected.length === 0) {
+    var result = computeLocalDensity(appState.focusedNodeId, appState.edges, appState.nodes, appState.densityThreshold);
+    var localGroup = result.localGroup;
+    var contextHubs = result.contextHubs;
+    if (localGroup.length === 0 && contextHubs.length === 0) {
         listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 text-xs">' + iconLinkSlash('text-slate-300 text-xl mb-1 block') + '繋がっている概念はありません</div>';
         return;
     }
-    connected.forEach(function(node) {
-        var chip = document.createElement('div');
-        chip.className = 'group inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50/70 hover:bg-green-100 text-slate-700 hover:text-green-700 rounded-lg text-sm font-medium cursor-pointer transition border border-green-200/60';
-        chip.onclick = function(e) {
-            if (e.target.closest('.remove-edge-btn')) return;
-            setFocusedNode(node.id, true);
-            renderAll();
+
+    // Compute inclusion relationships among local group nodes
+    var incResult = (localGroup.length >= 2) ? computeInclusionRelationships(localGroup, appState.edges, appState.nodes, appState.inclusionThreshold) : null;
+    var children = incResult ? incResult.children : [];
+    var parents = incResult ? incResult.parents : [];
+    var neither = incResult ? incResult.neither : localGroup;
+
+    if (parents.length > 0) {
+        upperCountEl.innerText = parents.length;
+        if (upperSection) upperSection.classList.remove('hidden');
+        parents.forEach(function(node) { appendChip(upperListEl, node, 'parent'); });
+    }
+    var displayLocal = (children.length > 0) ? children : neither;
+    if (displayLocal.length > 0) {
+        localCountEl.innerText = displayLocal.length;
+        if (localSection) localSection.classList.remove('hidden');
+        displayLocal.forEach(function(node) { appendChip(listEl, node, 'local'); });
+    }
+    if (contextHubs.length > 0) {
+        hubCountEl.innerText = contextHubs.length;
+        if (hubSection) hubSection.classList.remove('hidden');
+        contextHubs.forEach(function(node) { appendChip(hubListEl, node, 'hub'); });
+    }
+}
+
+function appendChip(container, node, type) {
+    var isGreen = type === 'local';
+    var bgClass = isGreen ? 'bg-green-50/70 hover:bg-green-100 text-slate-700 hover:text-green-700 border-green-200/60' : 'bg-amber-50/70 hover:bg-amber-100 text-slate-600 hover:text-amber-700 border-amber-200/60';
+    var iconColor = isGreen ? 'text-green-400' : 'text-amber-400';
+    var chip = document.createElement('div');
+    chip.className = 'group inline-flex items-center gap-1.5 px-3 py-1.5 ' + bgClass + ' rounded-lg text-sm font-medium cursor-pointer transition border';
+    chip.onclick = function(e) {
+        if (e.target.closest('.remove-edge-btn')) return;
+        setFocusedNode(node.id, true);
+        renderAll();
+    };
+    var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除">' + iconXmark() + '</button>' : '';
+    chip.innerHTML = iconLink(iconColor) + '<span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
+    var removeBtn = chip.querySelector('.remove-edge-btn');
+    if (removeBtn) {
+        removeBtn.onclick = function(e) {
+            e.stopPropagation();
+            var nodeName = appState.nodes[node.id] ? appState.nodes[node.id].name : node.id;
+            if (!confirm('「' + nodeName + '」との接続を解除しますか？')) return;
+            window._removeEdge && window._removeEdge(appState.focusedNodeId, node.id).then(function(result) {
+                if (result && result.error) { showToast(result.error, 'error'); return; }
+                renderAll();
+            });
         };
-        var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除">' + iconXmark() + '</button>' : '';
-        chip.innerHTML = iconLink('text-green-400') + '<span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
-        var removeBtn = chip.querySelector('.remove-edge-btn');
-        if (removeBtn) {
-            removeBtn.onclick = function(e) {
-                e.stopPropagation();
-                var nodeName = appState.nodes[node.id] ? appState.nodes[node.id].name : node.id;
-                if (!confirm('「' + nodeName + '」との接続を解除しますか？')) return;
-                window._removeEdge && window._removeEdge(appState.focusedNodeId, node.id).then(function(result) {
-                    if (result && result.error) { showToast(result.error, 'error'); return; }
-                    renderAll();
-                });
-            };
-        }
-        listEl.appendChild(chip);
-    });
+    }
+    container.appendChild(chip);
 }
 
 function renderConnectedList2Hop(hop1Ids, hop2Ids) {

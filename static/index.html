@@ -166,12 +166,24 @@
             </div>
 
             <div id="listViewContainer" class="flex flex-col gap-2">
-                <div class="flex items-center justify-between">
+                <div id="upperContextSection" class="flex flex-col gap-1 hidden">
                     <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        直接繋がっている概念 (<span id="connectedCount">0</span>)
+                        上位コンテキスト (<span id="upperContextCount">0</span>)
                     </h2>
+                    <div id="upperContextList" class="flex flex-wrap gap-1.5 min-h-[40px]"></div>
                 </div>
-                <div id="connectedList" class="flex flex-wrap gap-1.5 min-h-[60px]"></div>
+                <div id="localGroupSection" class="flex flex-col gap-1 hidden">
+                    <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        同質グループ (<span id="localGroupCount">0</span>)
+                    </h2>
+                    <div id="connectedList" class="flex flex-wrap gap-1.5 min-h-[40px]"></div>
+                </div>
+                <div id="contextHubSection" class="flex flex-col gap-1 hidden">
+                    <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        直接繋がっている概念 (<span id="contextHubCount">0</span>)
+                    </h2>
+                    <div id="contextHubList" class="flex flex-wrap gap-1.5 min-h-[40px]"></div>
+                </div>
                 <div id="hop2Section" class="flex flex-col gap-1">
                     <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                         2つ先の概念 (<span id="hop2Count">0</span>)
