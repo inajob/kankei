@@ -8,7 +8,10 @@ import { spinnerInline, spinnerHtml } from './spinner.js';
 import { iconNodes, iconCompass, iconChevronRight, iconLinkSlash, iconLink, iconXmark } from './icons.js';
 import { computeLocalDensity, computeInclusionRelationships } from './local-density.js';
 
-export async function renderAll() {
+var renderRunning = false;
+var renderPending = false;
+
+async function renderAllImpl() {
     if (Object.keys(appState.nodes).length === 0) return;
 
     var overviewSection = document.getElementById('overviewSection');
@@ -98,6 +101,19 @@ export async function renderAll() {
         var gl = document.getElementById('graphLoading');
         if (gl) gl.classList.add('hidden');
     }
+}
+
+export function renderAll() {
+    if (renderRunning) {
+        renderPending = true;
+        return;
+    }
+    renderRunning = true;
+    renderPending = false;
+    renderAllImpl().finally(function() {
+        renderRunning = false;
+        if (renderPending) renderAll();
+    });
 }
 
 function renderOverview(isolatedIds) {
@@ -230,6 +246,7 @@ function renderConnectedList() {
     var upperCountEl = document.getElementById('upperContextCount');
     listEl.innerHTML = '';
     hubListEl.innerHTML = '';
+    if (upperListEl) upperListEl.innerHTML = '';
     if (upperSection) upperSection.classList.add('hidden');
     if (localSection) localSection.classList.add('hidden');
     if (hubSection) hubSection.classList.add('hidden');

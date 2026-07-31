@@ -5,48 +5,39 @@ import { setAnimationFrameId } from './state.js';
 import { animationFrameId } from './state.js';
 import { computeLocalDensity, computeInclusionRelationships } from './local-density.js';
 
-function findDenseGroups(edges, nodes, nodeIds, threshold, minSize) {
-    if (threshold === undefined) threshold = 0.3;
-    if (minSize === undefined) minSize = 3;
-    var adj = {};
-    var degree = {};
-    nodeIds.forEach(function(id) {
-        adj[id] = [];
-        degree[id] = 0;
+function openLocalGroupModal(memberIds) {
+    var modal = document.getElementById('localGroupModal');
+    var listEl = document.getElementById('localGroupModalList');
+    if (!modal || !listEl) return;
+    listEl.innerHTML = '';
+    memberIds.forEach(function(id) {
+        var node = appState.nodes[id];
+        if (!node) return;
+        var btn = document.createElement('button');
+        btn.className = 'px-3 py-2 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-xl text-sm font-medium text-slate-700 hover:text-green-700 text-left transition truncate';
+        btn.textContent = node.name;
+        btn.onclick = function() {
+            modal.classList.add('hidden');
+            setFocusedNode(id, true);
+            window._renderAll && window._renderAll();
+        };
+        listEl.appendChild(btn);
     });
-    edges.forEach(function(e) {
-        if (!adj[e.node1] || !adj[e.node2]) return;
-        adj[e.node1].push(e.node2);
-        adj[e.node2].push(e.node1);
-        degree[e.node1]++;
-        degree[e.node2]++;
-    });
-    var visited = new Set();
-    var groups = [];
-    nodeIds.forEach(function(startId) {
-        if (visited.has(startId)) return;
-        var stack = [startId];
-        var cluster = new Set();
-        while (stack.length) {
-            var cur = stack.pop();
-            if (visited.has(cur)) continue;
-            visited.add(cur);
-            cluster.add(cur);
-            adj[cur].forEach(function(nid) {
-                if (!cluster.has(nid)) {
-                    var shared = 0;
-                    var setA = new Set(adj[cur] || []);
-                    (adj[nid] || []).forEach(function(v) { if (setA.has(v)) shared++; });
-                    var minDeg = Math.min(degree[cur], degree[nid]);
-                    var score = minDeg > 0 ? shared / minDeg : 0;
-                    if (score >= threshold) stack.push(nid);
-                }
-            });
-        }
-        if (cluster.size >= minSize) groups.push(Array.from(cluster));
-    });
-    return groups;
+    modal.classList.remove('hidden');
 }
+
+function wireLocalGroupModal() {
+    var modal = document.getElementById('localGroupModal');
+    if (!modal) return;
+    var closeBtn = document.getElementById('closeLocalGroupModalBtn');
+    var doneBtn = document.getElementById('localGroupModalDoneBtn');
+    if (closeBtn) closeBtn.onclick = function() { modal.classList.add('hidden'); };
+    if (doneBtn) doneBtn.onclick = function() { modal.classList.add('hidden'); };
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+}
+wireLocalGroupModal();
 
 export function initGraphCanvas() {
     var canvas = document.getElementById('networkCanvas');
@@ -73,7 +64,6 @@ export function initGraphCanvas() {
         ? computeInclusionRelationships(groupResult.localGroup, appState.edges, appState.nodes, appState.inclusionThreshold)
         : null;
     var parentIds = new Set(incResult ? incResult.parents.map(function(n) { return n.id; }) : []);
-    var childIds = new Set(incResult ? incResult.children.map(function(n) { return n.id; }) : []);
     connected.sort(function(a, b) {
         var ai = localGroupIds.has(a.id) ? 0 : 1;
         var bi = localGroupIds.has(b.id) ? 0 : 1;
@@ -104,42 +94,38 @@ export function initGraphCanvas() {
         return { from: e.node1, to: e.node2 };
     });
 
-    // Find dense groups among 1-hop + 2-hop nodes (excluding center)
-    var outerNodeIds = new Set(nodeIds);
-    outerNodeIds.delete(centerNode.id);
-    var visibleEdges = appState.edges.filter(function(e) {
-        return outerNodeIds.has(e.node1) && outerNodeIds.has(e.node2);
-    });
-    var denseGroups = findDenseGroups(visibleEdges, appState.nodes, Array.from(outerNodeIds), 0.3, 3);
+    // Collapse the homogeneous local group (同質グループ) into a single super-node
     var nodeToSuper = {};
     var superNodes = [];
-    denseGroups.forEach(function(group, idx) {
-        group.forEach(function(id) { nodeToSuper[id] = idx; });
-        var memberPositions = nodes.filter(function(n) { return group.indexOf(n.id) !== -1; });
+    if (groupResult.localGroup.length >= 3) {
+        var memberIds = groupResult.localGroup.map(function(n) { return n.id; });
+        memberIds.forEach(function(id) { nodeToSuper[id] = 0; });
+        var memberPositions = nodes.filter(function(n) { return nodeToSuper[n.id] !== undefined; });
         var avgX = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.x; }, 0) / memberPositions.length : width / 2;
         var avgY = memberPositions.length ? memberPositions.reduce(function(s, n) { return s + n.y; }, 0) / memberPositions.length : height / 2;
-        var memberNames = group.map(function(id) { return appState.nodes[id] ? appState.nodes[id].name : '?'; }).join(', ');
+        var memberNames = groupResult.localGroup.map(function(n) { return n.name; });
+        var groupLabel = memberNames.slice(0, 3).join(', ') + (memberNames.length > 3 ? ' +' + (memberNames.length - 3) + '\u4ef6' : '');
         superNodes.push({
-            id: '__dense_' + idx,
-            name: memberNames,
+            id: '__localGroup',
+            name: groupLabel,
             x: avgX, y: avgY,
             vx: 0, vy: 0,
             isCenter: false,
-            isDenseGroup: true,
-            radius: Math.min(36, Math.max(22, 14 + group.length * 4)),
+            isLocalGroupSuper: true,
+            radius: Math.min(40, Math.max(22, 14 + memberIds.length * 3)),
             depth: 1,
-            memberIds: group.slice()
+            memberIds: memberIds
         });
-    });
-    // Remove original nodes that were collapsed into dense groups
+    }
+    // Remove original nodes that were collapsed into the local group super-node
     nodes = nodes.filter(function(n) { return nodeToSuper[n.id] === undefined; });
     // Add super-nodes
     nodes = nodes.concat(superNodes);
-    // Rewire edges: replace member IDs with super-node IDs
+    // Rewire edges: replace member IDs with super-node ID
     localEdges = localEdges.map(function(e) {
         return {
-            from: nodeToSuper[e.from] !== undefined ? '__dense_' + nodeToSuper[e.from] : e.from,
-            to: nodeToSuper[e.to] !== undefined ? '__dense_' + nodeToSuper[e.to] : e.to
+            from: nodeToSuper[e.from] !== undefined ? '__localGroup' : e.from,
+            to: nodeToSuper[e.to] !== undefined ? '__localGroup' : e.to
         };
     }).filter(function(e) {
         return e.from !== e.to;
@@ -164,13 +150,15 @@ export function initGraphCanvas() {
     };
     canvas.onmouseup = function(e) {
         if (localDraggedNode && isDragging) {
-            if (localDraggedNode.id !== appState.focusedNodeId) {
+            if (localDraggedNode.isLocalGroupSuper) {
+                openLocalGroupModal(localDraggedNode.memberIds);
+            } else if (localDraggedNode.id !== appState.focusedNodeId) {
                 if (localDraggedNode.depth === 2 && localDraggedNode.parentId && appState.nodes[localDraggedNode.parentId]) {
                     setFocusedNode(localDraggedNode.parentId, true);
                 }
                 setFocusedNode(localDraggedNode.id, true);
+                window._renderAll && window._renderAll();
             }
-            window._renderAll && window._renderAll();
         }
         localDraggedNode = null;
         isDragging = false;
@@ -224,6 +212,9 @@ export function initGraphCanvas() {
             } else if (localGroupIds.has(node.id)) {
                 ctx.fillStyle = '#16a34a'; ctx.fill();
                 ctx.strokeStyle = '#bbf7d0'; ctx.lineWidth = 2;
+            } else if (node.isLocalGroupSuper) {
+                ctx.fillStyle = '#16a34a'; ctx.fill();
+                ctx.strokeStyle = '#bbf7d0'; ctx.lineWidth = 3;
             } else if (contextHubIds.has(node.id)) {
                 ctx.fillStyle = '#d97706'; ctx.fill();
                 ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 2;

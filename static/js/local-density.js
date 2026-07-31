@@ -1,13 +1,14 @@
 export function computeLocalDensity(focusedNodeId, edges, nodes, threshold) {
   if (threshold === undefined) threshold = 0.2;
 
+  var uniqueEdges = dedupEdges(edges);
   var adj = {};
   var degree = {};
   Object.keys(nodes).forEach(function(id) {
     adj[id] = [];
     degree[id] = 0;
   });
-  edges.forEach(function(e) {
+  uniqueEdges.forEach(function(e) {
     if (!adj[e.node1] || !adj[e.node2]) return;
     adj[e.node1].push(e.node2);
     adj[e.node2].push(e.node1);
@@ -43,13 +44,14 @@ export function computeLocalDensity(focusedNodeId, edges, nodes, threshold) {
 export function computeInclusionRelationships(localGroupNodes, edges, nodes, threshold) {
   if (threshold === undefined) threshold = 0.35;
 
+  var uniqueEdges = dedupEdges(edges);
   var adj = {};
   var degree = {};
   Object.keys(nodes).forEach(function(id) {
     adj[id] = [];
     degree[id] = 0;
   });
-  edges.forEach(function(e) {
+  uniqueEdges.forEach(function(e) {
     if (!adj[e.node1] || !adj[e.node2]) return;
     adj[e.node1].push(e.node2);
     adj[e.node2].push(e.node1);
@@ -114,6 +116,19 @@ export function computeInclusionRelationships(localGroupNodes, edges, nodes, thr
   neither.sort(function(a, b) { return a.name.localeCompare(b.name, 'ja'); });
 
   return { children: children, parents: parents, neither: neither, pairs: pairs };
+}
+
+function dedupEdges(edges) {
+  var seen = new Set();
+  var result = [];
+  edges.forEach(function(e) {
+    if (!e || !e.node1 || !e.node2) return;
+    var key = e.node1 < e.node2 ? e.node1 + '|' + e.node2 : e.node2 + '|' + e.node1;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(e);
+  });
+  return result;
 }
 
 function countCommon(adj, a, b) {

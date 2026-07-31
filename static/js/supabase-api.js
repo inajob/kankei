@@ -48,7 +48,6 @@ export async function loadEdgesForNodeIds(nodeIds, label, knownIds) {
     if (!nodeIds || nodeIds.length === 0) return;
     var unseenIds = nodeIds.filter(function(id) { return !loadedEdgeNodeIds.has(id); });
     if (unseenIds.length === 0) return;
-    var existingIds = new Set(appState.edges.map(function(e) { return e.id; }));
     for (var i = 0; i < unseenIds.length; i += 200) {
         var chunk = unseenIds.slice(i, i + 50);
         var ids = chunk.map(function(id) { return id; }).join(',');
@@ -64,6 +63,7 @@ export async function loadEdgesForNodeIds(nodeIds, label, knownIds) {
             console.error('[' + label + '] Supabase error:', res.error);
         }
         if (res.data) {
+            var existingIds = new Set(appState.edges.map(function(e) { return e.id; }));
             res.data.forEach(function(e) {
                 if (!existingIds.has(e.id)) {
                     appState.edges.push(e);

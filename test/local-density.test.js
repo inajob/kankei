@@ -78,6 +78,7 @@ async function main() {
     test('\u6B21\u65700', 'A', [], nodes({ A: n('A', 'Alpha'), B: n('B', 'Beta') }), undefined, { localGroup: [], contextHubs: [], scores: {} });
     test('\u30CE\u30FC\u30C9\u8F9E\u66F8\u306A\u3057', 'A', [{ node1: 'A', node2: 'X' }], nodes({ A: n('A', 'Alpha') }), undefined, { localGroup: [], contextHubs: [], scores: {} });
     test('\u7121\u95A2\u9023', 'X', [{ node1: 'A', node2: 'B' }, { node1: 'B', node2: 'C' }], nodes({ A: n('A', 'A'), B: n('B', 'B'), C: n('C', 'C'), X: n('X', 'X') }), undefined, { localGroup: [], contextHubs: [], scores: {} });
+    test('\u91CD\u8907\u30A8\u30C3\u30B8: \u540C\u3058\u7D50\u679C\u3067\u30C1\u30C3\u30D7\u91CD\u8907\u3057\u306A\u3044', 'A', [{ node1: 'A', node2: 'B' }, { node1: 'A', node2: 'B' }, { node1: 'B', node2: 'C' }, { node1: 'B', node2: 'C' }, { node1: 'C', node2: 'A' }, { node1: 'C', node2: 'A' }], nodes({ A: n('A', 'Alpha'), B: n('B', 'Beta'), C: n('C', 'Gamma') }), undefined, { localGroup: [n('B', 'Beta'), n('C', 'Gamma')], contextHubs: [], scores: { B: 0.5, C: 0.5 } });
 
     console.log('\n\nComputeInclusionRelationships \u30C6\u30B9\u30C8\n');
 
@@ -136,6 +137,14 @@ async function main() {
         nodes({ B: n('B', '\u63A8\u7406\u6F2B\u753B'), C: n('C', '\u6F2B\u753B'), F: n('F', '\u672C'), G: n('G', '\u5C0F\u8AAC') }),
         0.3,
         { children: [n('B', '\u63A8\u7406\u6F2B\u753B')], parents: [n('C', '\u6F2B\u753B')], neither: [], pairs: [['B', 'C']] });
+
+    // Test 7: Duplicate edges must not break inclusion detection (degree inflation would mask asymmetry)
+    testInclusion('\u91CD\u8907\u30A8\u30C3\u30B8: \u5305\u6471\u95A2\u4FC2\u304C\u4E71\u308C\u306A\u3044',
+        [n('A', 'A'), n('B', 'B')],
+        [{ node1: 'A', node2: 'F' }, { node1: 'A', node2: 'F' }, { node1: 'B', node2: 'F' }, { node1: 'B', node2: 'G' }],
+        nodes({ A: n('A', 'A'), B: n('B', 'B'), F: n('F', 'F'), G: n('G', 'G') }),
+        0.3,
+        { children: [n('A', 'A')], parents: [n('B', 'B')], neither: [], pairs: [['A', 'B']] });
 
     var total = passed + failed;
     console.log('\n---');
