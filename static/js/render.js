@@ -40,7 +40,7 @@ async function renderAllImpl() {
         if (hop2Section) hop2Section.classList.remove('hidden');
         var hop2List = document.getElementById('hop2List');
         if (hop2List) {
-            hop2List.innerHTML = '<div class="flex items-center justify-center py-4 text-slate-400 w-full">' + spinnerHtml('読み込み中...') + '</div>';
+            hop2List.innerHTML = '<div class="flex items-center justify-center py-4 text-slate-400 dark:text-slate-500 w-full">' + spinnerHtml('読み込み中...') + '</div>';
         }
         if (appState.viewMode === 'graph') {
             var graphLoading = document.getElementById('graphLoading');
@@ -116,6 +116,12 @@ export function renderAll() {
     });
 }
 
+function activityKey(node) {
+    var last = appState.lastActivityAt[node.id] || '';
+    var created = node.created_at || '';
+    return last > created ? last : created;
+}
+
 function renderOverview(isolatedIds) {
     var allNodes = Object.values(appState.nodes);
     if (!isolatedIds) isolatedIds = new Set();
@@ -125,21 +131,26 @@ function renderOverview(isolatedIds) {
 
     var listEl = document.getElementById('overviewNodeList');
     listEl.innerHTML = '';
-    allNodes.sort(function(a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
+    Object.keys(appState.lastActivityAt).forEach(function(id) {
+        if (!appState.nodes[id]) delete appState.lastActivityAt[id];
+    });
+    allNodes.sort(function(a, b) {
+        return activityKey(b).localeCompare(activityKey(a));
+    });
 
     if (allNodes.length === 0) {
-        listEl.innerHTML = '<div class="col-span-full text-center text-slate-400 text-xs py-8">' + iconNodes('text-slate-300 text-3xl mb-2 block') + 'まだ概念がありません</div>';
+        listEl.innerHTML = '<div class="col-span-full text-center text-slate-400 dark:text-slate-500 text-xs py-8">' + iconNodes('text-slate-300 dark:text-slate-600 text-3xl mb-2 block') + 'まだ概念がありません</div>';
         return;
     }
 
     allNodes.forEach(function(node) {
         var isolated = isolatedIds.has(node.id);
         var card = document.createElement('div');
-        card.className = 'px-4 py-3 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-xl cursor-pointer transition text-base font-semibold text-slate-700 hover:text-green-700 truncate';
+        card.className = 'px-4 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/40 border border-slate-200 dark:border-slate-600 hover:border-green-300 rounded-xl cursor-pointer transition text-base font-semibold text-slate-700 dark:text-slate-200 hover:text-green-700 dark:hover:text-green-400 truncate';
         card.title = node.name;
         card.textContent = node.name;
         if (isolated) {
-            card.innerHTML = escapeHtml(node.name) + ' <span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal ml-1">孤立</span>';
+            card.innerHTML = escapeHtml(node.name) + ' <span class="text-[9px] bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-px rounded-full font-normal ml-1">孤立</span>';
         }
         card.onclick = function() {
             appState.history = [];
@@ -200,7 +211,7 @@ function renderBreadcrumbContent(navEl) {
     if (!navEl) return;
     navEl.innerHTML = '';
     if (appState.history.length === 0) {
-        navEl.innerHTML = '<span class="text-slate-400 italic">' + iconCompass('mr-1') + ' 思考の軌跡がここに表示されます</span>';
+        navEl.innerHTML = '<span class="text-slate-400 dark:text-slate-500 italic">' + iconCompass('mr-1') + ' 思考の軌跡がここに表示されます</span>';
         return;
     }
     appState.history.slice(-5).forEach(function(nodeId) {
@@ -217,13 +228,13 @@ function renderBreadcrumbContent(navEl) {
         };
         navEl.appendChild(btn);
         var arrow = document.createElement('span');
-        arrow.className = 'text-slate-300';
+        arrow.className = 'text-slate-300 dark:text-slate-600';
         arrow.innerHTML = iconChevronRight('text-[10px]');
         navEl.appendChild(arrow);
     });
     if (appState.focusedNodeId && appState.nodes[appState.focusedNodeId]) {
         var currentSpan = document.createElement('span');
-        currentSpan.className = 'font-bold text-slate-800 whitespace-nowrap bg-green-100/60 px-2 py-0.5 rounded-md';
+        currentSpan.className = 'font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap bg-green-100/60 dark:bg-green-900/40 px-2 py-0.5 rounded-md';
         currentSpan.innerText = appState.nodes[appState.focusedNodeId].name;
         navEl.appendChild(currentSpan);
     }
@@ -255,7 +266,7 @@ function renderConnectedList() {
     var localGroup = result.localGroup;
     var contextHubs = result.contextHubs;
     if (localGroup.length === 0 && contextHubs.length === 0) {
-        listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 text-xs">' + iconLinkSlash('text-slate-300 text-xl mb-1 block') + '繋がっている概念はありません</div>';
+        listEl.innerHTML = '<div class="w-full py-6 text-center text-slate-400 dark:text-slate-500 text-xs">' + iconLinkSlash('text-slate-300 dark:text-slate-600 text-xl mb-1 block') + '繋がっている概念はありません</div>';
         return;
     }
 
@@ -285,7 +296,7 @@ function renderConnectedList() {
 
 function appendChip(container, node, type) {
     var isGreen = type === 'local';
-    var bgClass = isGreen ? 'bg-green-50/70 hover:bg-green-100 text-slate-700 hover:text-green-700 border-green-200/60' : 'bg-amber-50/70 hover:bg-amber-100 text-slate-600 hover:text-amber-700 border-amber-200/60';
+    var bgClass = isGreen ? 'bg-green-50/70 dark:bg-green-900/50 hover:bg-green-100 dark:hover:bg-green-900/70 text-slate-700 dark:text-slate-200 hover:text-green-700 dark:hover:text-green-400 border-green-200/60 dark:border-green-700/60' : 'bg-amber-50/70 dark:bg-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 border-amber-200/60 dark:border-amber-700/60';
     var iconColor = isGreen ? 'text-green-400' : 'text-amber-400';
     var chip = document.createElement('div');
     chip.className = 'group inline-flex items-center gap-1.5 px-3 py-1.5 ' + bgClass + ' rounded-lg text-sm font-medium cursor-pointer transition border';
@@ -294,7 +305,7 @@ function appendChip(container, node, type) {
         setFocusedNode(node.id, true);
         renderAll();
     };
-    var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 hover:text-red-500 text-[10px] ml-0.5 shrink-0" title="接続を解除">' + iconXmark() + '</button>' : '';
+    var removeBtnHtml = currentUser ? '<button class="remove-edge-btn text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 text-[10px] ml-0.5 shrink-0" title="接続を解除">' + iconXmark() + '</button>' : '';
     chip.innerHTML = iconLink(iconColor) + '<span>' + escapeHtml(node.name) + '</span>' + removeBtnHtml;
     var removeBtn = chip.querySelector('.remove-edge-btn');
     if (removeBtn) {
@@ -341,14 +352,14 @@ function renderConnectedList2Hop(hop1Ids, hop2Ids) {
     if (sectionEl) sectionEl.classList.remove('hidden');
     hop2Entries.forEach(function(entry) {
         var chip = document.createElement('div');
-        chip.className = 'group inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50/60 hover:bg-amber-100 text-slate-600 hover:text-amber-700 rounded-lg text-xs cursor-pointer transition border border-amber-200/50';
+        chip.className = 'group inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50/60 dark:bg-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-400 rounded-lg text-xs cursor-pointer transition border border-amber-200/50 dark:border-amber-700/60';
         chip.onclick = function() {
             appState.history.push(appState.focusedNodeId);
             appState.history.push(entry.parents[0].id);
             setFocusedNode(entry.id, false);
             renderAll();
         };
-        chip.innerHTML = '<span>' + escapeHtml(entry.name) + '</span><span class="text-[10px] text-slate-400"> (' + escapeHtml(entry.parents.map(function(p) { return p.name; }).join(', ')) + ')</span>';
+        chip.innerHTML = '<span>' + escapeHtml(entry.name) + '</span><span class="text-[10px] text-slate-400 dark:text-slate-500"> (' + escapeHtml(entry.parents.map(function(p) { return p.name; }).join(', ')) + ')</span>';
         listEl.appendChild(chip);
     });
 }
@@ -365,16 +376,16 @@ function renderDrawerAllNodes(isolatedIds) {
     if (searchVal) allNodes = allNodes.filter(function(n) { return n.name.toLowerCase().includes(searchVal); });
     allNodes.sort(function(a, b) { return a.name.localeCompare(b.name, 'ja'); });
     if (allNodes.length === 0) {
-        drawerListEl.innerHTML = '<li class="py-3 text-center text-[11px] text-slate-400">該当する概念はありません</li>';
+        drawerListEl.innerHTML = '<li class="py-3 text-center text-[11px] text-slate-400 dark:text-slate-500">該当する概念はありません</li>';
         return;
     }
     allNodes.forEach(function(node) {
         var isolated = isolatedIds && isolatedIds.has(node.id);
         var isCurrent = node.id === appState.focusedNodeId;
         var li = document.createElement('li');
-        li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 last:border-b-0 ' + (isCurrent ? 'bg-green-50 text-green-700 font-bold' : 'hover:bg-slate-50 text-slate-700');
+        li.className = 'px-2 py-[3px] flex items-center justify-between cursor-pointer transition border-b border-slate-50 dark:border-slate-700 last:border-b-0 ' + (isCurrent ? 'bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200');
         li.onclick = function() { appState.history = []; setFocusedNode(node.id, true); renderAll(); window._closeDrawer && window._closeDrawer(); };
-        li.innerHTML = '<span class="truncate text-xs leading-tight">' + escapeHtml(node.name) + '</span>' + (isolated ? '<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-px rounded-full font-normal shrink-0 ml-1">孤立</span>' : '');
+        li.innerHTML = '<span class="truncate text-xs leading-tight">' + escapeHtml(node.name) + '</span>' + (isolated ? '<span class="text-[9px] bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-px rounded-full font-normal shrink-0 ml-1">孤立</span>' : '');
         drawerListEl.appendChild(li);
     });
 }

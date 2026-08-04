@@ -14,7 +14,7 @@ function openLocalGroupModal(memberIds) {
         var node = appState.nodes[id];
         if (!node) return;
         var btn = document.createElement('button');
-        btn.className = 'px-3 py-2 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-xl text-sm font-medium text-slate-700 hover:text-green-700 text-left transition truncate';
+        btn.className = 'px-3 py-2 bg-slate-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/40 border border-slate-200 dark:border-slate-600 hover:border-green-300 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-green-700 dark:hover:text-green-400 text-left transition truncate';
         btn.textContent = node.name;
         btn.onclick = function() {
             modal.classList.add('hidden');

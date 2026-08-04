@@ -9,7 +9,8 @@ export let appState = {
     history: [],
     viewMode: 'list',
     densityThreshold: 0.2,
-    inclusionThreshold: 0.35
+    inclusionThreshold: 0.35,
+    lastActivityAt: {}
 };
 
 export let activeGlobalSearchIndex = -1;
@@ -30,7 +31,7 @@ export function setAppState(s) { appState = s; }
 
 export function resetAppState() {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    appState = { nodes: {}, edges: [], focusedNodeId: null, history: [], viewMode: 'list' };
+    appState = { nodes: {}, edges: [], focusedNodeId: null, history: [], viewMode: 'list', lastActivityAt: {} };
     currentUser = null;
     currentUserRole = 'user';
     activeGlobalSearchIndex = -1;

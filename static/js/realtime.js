@@ -2,6 +2,7 @@ import { sb } from './shared-supabase.js';
 import { appState } from './state.js';
 import { showToast } from './toast.js';
 import { loadAllData } from './supabase-api.js';
+import { recordActivity, recordEdgeActivity, clearActivity } from './activity.js';
 
 export function subscribeRealtime() {
     if (sb.getChannels().some(function(c) { return c.topic === 'realtime:db-changes'; })) return;
@@ -11,6 +12,7 @@ export function subscribeRealtime() {
             var n = payload.new;
             if (!appState.nodes[n.id]) {
                 appState.nodes[n.id] = n;
+                recordActivity(n.id, n.created_at);
                 var currentUserId = window._getCurrentUserId && window._getCurrentUserId();
                 if (n.created_by !== currentUserId) {
                     showToast('新しい概念: ' + n.name, 'info');
@@ -24,6 +26,7 @@ export function subscribeRealtime() {
                 var name = appState.nodes[old.id].name;
                 delete appState.nodes[old.id];
                 appState.edges = appState.edges.filter(function(e) { return e.node1 !== old.id && e.node2 !== old.id; });
+                clearActivity(old.id);
                 var currentUserId = window._getCurrentUserId && window._getCurrentUserId();
                 if (old.created_by !== currentUserId) {
                     showToast('削除: ' + name, 'warn');
@@ -36,6 +39,7 @@ export function subscribeRealtime() {
             var alreadyExists = appState.edges.some(function(ex) { return ex.id === e.id; });
             if (!alreadyExists) {
                 appState.edges.push(e);
+                recordEdgeActivity(e);
                 var currentUserId = window._getCurrentUserId && window._getCurrentUserId();
                 if (e.created_by !== currentUserId) {
                     var n1 = appState.nodes[e.node1];

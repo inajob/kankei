@@ -25,7 +25,7 @@ function renderWikiSection(container, query, type) {
         }
         results.forEach(function(item) {
             var el = document.createElement('div');
-            el.className = 'wiki-item px-4 py-2 hover:bg-blue-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
+            el.className = 'wiki-item px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer text-xs flex items-center justify-between text-slate-700 dark:text-slate-200';
             el.innerHTML = '<div class="min-w-0"><span class="font-medium">' + escapeHtml(item.title) + '</span>' + (item.description ? '<span class="text-[10px] text-slate-400 ml-2">' + escapeHtml(item.description) + '</span>' : '') + '</div><span class="text-[10px] text-blue-500 font-semibold shrink-0 ml-2">+ 新規作成</span>';
             el.onclick = function() {
                 getOrCreateNode(item.title).then(function(node) {
@@ -63,7 +63,7 @@ export function renderGlobalSearchDropdown(query) {
     }).slice(0, 6);
     matches.forEach(function(node) {
         var item = document.createElement('div');
-        item.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
+        item.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/40 cursor-pointer text-xs flex items-center justify-between text-slate-700 dark:text-slate-200';
         item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-slate-400">ジャンプ</span>';
         item.onclick = function() {
             appState.history = [];
@@ -77,7 +77,7 @@ export function renderGlobalSearchDropdown(query) {
     });
     if (currentUser) {
         var createOption = document.createElement('div');
-        createOption.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs font-semibold text-green-600 bg-slate-50 flex items-center gap-1.5';
+        createOption.className = 'search-autocomplete-item px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/40 cursor-pointer text-xs font-semibold text-green-600 bg-slate-50 dark:bg-slate-700 flex items-center gap-1.5';
         createOption.innerHTML = iconPlus() + ' 「' + query.replace(/</g, '&lt;') + '」を新規作成してジャンプ';
         createOption.onclick = function() {
             getOrCreateNode(query).then(function(node) {
@@ -107,7 +107,7 @@ export function renderConnectSearchDropdown(query) {
     }).slice(0, 5);
     matches.forEach(function(node) {
         var item = document.createElement('div');
-        item.className = 'connect-autocomplete-item px-4 py-2 hover:bg-green-50 cursor-pointer text-xs flex items-center justify-between text-slate-700';
+        item.className = 'connect-autocomplete-item px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/40 cursor-pointer text-xs flex items-center justify-between text-slate-700 dark:text-slate-200';
         item.innerHTML = '<span class="font-medium">' + highlightMatch(node.name, query) + '</span><span class="text-[10px] text-green-500 font-semibold">+ 接続</span>';
         item.onclick = async function() {
             var result = await createEdgeInternal(appState.focusedNodeId, node.id);

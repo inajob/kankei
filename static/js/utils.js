@@ -71,6 +71,6 @@ export function closeDrawer() {
 
 export function highlightAutocompleteItem(items, activeIndex) {
     items.forEach(function(item, idx) {
-        item.classList.toggle('bg-green-100', idx === activeIndex);
+        item.classList.toggle('bg-green-100 dark:bg-green-900/50', idx === activeIndex);
     });
 }

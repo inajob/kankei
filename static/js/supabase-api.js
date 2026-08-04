@@ -2,6 +2,7 @@ import { sb } from './shared-supabase.js';
 import { appState } from './state.js';
 import { generateId, findNodeByName } from './utils.js';
 import { currentUser } from './state.js';
+import { recordActivity, recordEdgeActivity, clearActivity } from './activity.js';
 
 async function paginateFetch(table) {
     var pageSize = 1000;
@@ -19,6 +20,27 @@ async function paginateFetch(table) {
 
 var loadedEdgeNodeIds = new Set();
 
+var activitySeeded = false;
+
+export async function loadRecentActivitySeed() {
+    if (activitySeeded) return;
+    activitySeeded = true;
+    try {
+        var res = await sb.rpc('get_recent_connections', { max_count: 200 });
+        if (res.error) {
+            console.error('[kankei] get_recent_connections error:', res.error);
+            return;
+        }
+        if (res.data) {
+            res.data.forEach(function(row) {
+                recordActivity(row.node_id, row.last_connected_at);
+            });
+        }
+    } catch (e) {
+        console.error('[kankei] get_recent_connections failed:', e);
+    }
+}
+
 export function clearEdgeCache() {
     loadedEdgeNodeIds.clear();
     appState.edges = [];
@@ -29,6 +51,7 @@ export async function loadAllData() {
     appState.nodes = {};
     allNodes.forEach(function(n) { appState.nodes[n.id] = n; });
     loadedEdgeNodeIds.clear();
+    await loadRecentActivitySeed();
 }
 
 export async function fetchAllNodes() {
@@ -108,6 +131,7 @@ export async function createEdgeInternal(nodeId1, nodeId2) {
     }
     if (res.data) {
         appState.edges.push(res.data);
+        recordEdgeActivity(res.data);
         return res.data;
     }
     return null;
@@ -131,5 +155,6 @@ export async function deleteNode(nodeId) {
     delete appState.nodes[nodeId];
     appState.edges = appState.edges.filter(function(e) { return e.node1 !== nodeId && e.node2 !== nodeId; });
     appState.history = appState.history.filter(function(id) { return id !== nodeId; });
+    clearActivity(nodeId);
     return { ok: true };
 }

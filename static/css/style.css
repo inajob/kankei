@@ -8,6 +8,18 @@ svg { vertical-align: middle; }
 .toast-enter { animation: toast-in 0.3s ease-out; }
 .toast-exit { animation: toast-out 0.3s ease-in forwards; }
 
+@media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #475569; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    .wiki-section {
+        border-top-color: #334155;
+    }
+    #overviewNodeList > div:hover {
+        box-shadow: 0 2px 8px rgba(255,255,255,0.06);
+    }
+}
+
 #overviewNodeList > div {
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }

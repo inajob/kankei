@@ -61,6 +61,7 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_edges_node1 ON edges(node1);
 CREATE INDEX IF NOT EXISTS idx_edges_node2 ON edges(node2);
+CREATE INDEX IF NOT EXISTS idx_edges_created_at ON edges(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name);
 CREATE INDEX IF NOT EXISTS idx_nodes_created_by ON nodes(created_by);
 CREATE INDEX IF NOT EXISTS idx_edges_created_by ON edges(created_by);
@@ -115,3 +116,23 @@ $$ LANGUAGE sql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION get_isolated_node_ids() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_isolated_node_ids() TO anon;
+
+-- 最近接続されたノード取得関数（overview の並び順用）
+-- 直近 max_count 件のエッジだけを読み、その両端ノードに最終接続時刻を付与して返す。
+-- edges(created_at DESC) のインデックスにより O(max_count) で済む（E 非依存・負荷一定）。
+CREATE OR REPLACE FUNCTION get_recent_connections(max_count integer DEFAULT 200)
+RETURNS TABLE(node_id text, last_connected_at timestamptz) AS $$
+  WITH recent AS (
+    SELECT node1, node2, created_at FROM edges ORDER BY created_at DESC LIMIT max_count
+  )
+  SELECT nid, MAX(ts) AS last_connected_at FROM (
+    SELECT node1 AS nid, created_at AS ts FROM recent
+    UNION ALL
+    SELECT node2 AS nid, created_at AS ts FROM recent
+  ) t
+  GROUP BY nid
+  ORDER BY last_connected_at DESC;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_recent_connections(integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_recent_connections(integer) TO anon;
